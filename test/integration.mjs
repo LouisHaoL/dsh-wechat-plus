@@ -348,9 +348,10 @@ console.log('== 阶段 11：连续消息排队（同一联系人）==')
 console.log('== 阶段 12：/stop 中止进行中的任务 ==')
 {
   const base = bridge.client.sent.length
-  bridge.client.emit('message', makeMsgFrom('u-a', '请从1开始数到10000，每行一个数字，不要省略任何数字'))
+  // 用模型不会拒绝、且必然流式长输出的提示词（重复 60 遍），保证能命中"忙"分支
+  bridge.client.emit('message', makeMsgFrom('u-a', '请把「稳定测试」这四个字连续重复 60 遍，中间不要停顿'))
   // 等任务确实开始产生输出（部分流式回传已发生）再 stop，保证命中"忙"分支
-  await waitFor('任务开始产出', () => /^\d+$/m.test(sentText(bridge, base)), 120000)
+  await waitFor('任务开始产出', () => sentText(bridge, base).includes('稳定测试'), 180000)
   bridge.client.emit('message', makeMsgFrom('u-a', '/stop'))
   await check('/stop 后收到停止确认与中止页脚', async () => {
     await waitFor('收到停止确认', () => sentText(bridge, base).includes('已请求停止当前任务'), 30000)

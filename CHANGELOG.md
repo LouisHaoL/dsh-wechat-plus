@@ -5,6 +5,8 @@
 ## [未发布]
 
 ### 修复
+- **contextToken 全链路持久化**：①首条消息即写入索引（此前新联系人首条消息不落 token）；②恢复会话时合并保存（此前覆盖丢失）；③空闲回收只清会话 ID、保留 token（此前删除导致次日定时推送失败）。定时任务由此可在重启/空闲后正常主动推送。
+- **TTS 子进程 Electron 兼容**：在 Electron 宿主中 `process.execPath` 是应用 exe，子进程启动时注入 `ELECTRON_RUN_AS_NODE=1` 使其以纯 Node 模式运行。
 - **TTS 子进程隔离**：msedge-tts 内部存在无 catch 的游离 Promise，网络异常时未处理拒绝会触发 DSH 的 fail-loud 机制导致整个应用周期性退出；TTS 现全部在子进程（`scripts/tts-worker.mjs`）执行，第三方库任何异常都不会波及 DSH。注：本机网络实测微软 Edge 朗读服务不可达，TTS 保持默认关闭；开启时服务不可达会静默跳过，不影响文字回复。
 - **peer 依赖解析**：`postinstall` 自动把 `@deepseek-ai/*` 以 junction 链接到 DSH 主机 node_modules，避免 `npm install`（尤其 `--legacy-peer-deps`）重建后 DSH 启动报 `ERR_MODULE_NOT_FOUND: @deepseek-ai/schemastery`。
 

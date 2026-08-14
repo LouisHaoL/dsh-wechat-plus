@@ -1,0 +1,145 @@
+# dsh-wechat-bridge · DSH 微信桥接插件
+
+把**手机微信**接到 **DeepSeek Harness (DSH)**：你在微信里给机器人发消息，DSH 的 AI 助手处理后把回复流式发回微信。功能定位与 CC-Connect 的"微信消息中转"类似，但**本插件为完全独立的原创实现**，与 CC-Connect 无任何代码、配置或商标关联（详见下方合规说明）。
+
+```
+手机微信 ──▶ 腾讯 iLink Bot API（ilinkai.weixin.qq.com，官方开放协议）
+                │  长轮询收消息 / sendmessage 回传
+                ▼
+        dsh-wechat-bridge（本插件，DSH 内运行）
+                │  ctx.agents.create + followup + 会话日志流
+                ▼
+        DeepSeek Harness AI Agent（DSH 官方 Agent 接口）
+```
+
+## 一、合规与"不侵权"说明
+
+1. **全部代码原创**：本仓库代码为独立编写，未复制、未翻译、未借鉴 CC-Connect 的任何源码或配置文件；插件名、配置结构、命令集均为原创。
+2. **微信通道合法**：走腾讯官方开放的「微信 ClawBot 插件功能」——iLink Bot 协议（域名 `ilinkai.weixin.qq.com`），受腾讯《微信 ClawBot 功能使用条款》约束，不是逆向 iPad 协议，也不是 PC 客户端 Hook。
+3. **底层依赖宽松许可**：协议客户端使用独立开源项目 [`wechat-ilink-client`](https://github.com/photon-hq/wechat-ilink-client)（MIT 许可，零运行时依赖），其实现参考腾讯官方开源包 `@tencent-weixin/openclaw-weixin`。MIT 归属声明见 `THIRD_PARTY_NOTICES.md`。
+4. **商标与命名**：不使用 "cc-connect" 名称、图标、文档文本或品牌元素。
+5. **参考对象**：CC-Connect 本身为 MIT 许可项目；即使按其许可证也允许合法复用（保留声明），本项目选择了更保守的路线——完全不使用其代码，只实现"消息中转"这一通用功能概念（功能概念本身不受著作权保护）。
+
+## 二、功能（v1）
+
+- ✅ 手机微信私聊 → DSH AI 对话，回复**流式分段**发回（打字机效果）
+- ✅ 内置**扫码登录**：自动弹出二维码页面，微信扫码即完成绑定（也可直接配置已有 token）
+- ✅ 每个联系人**独立 AI 会话**，互不串扰；`/new` 清空上下文重开
+- ✅ 语音消息（转写文字后交给 AI）、文字消息
+- ✅ 联系人**白名单**、纯链接消息拦截（安全铁律）
+- ✅ 断线/凭证过期自动重试、空闲自动回收会话
+- ✅ 命令：`/help` `/new` `/stop` `/status`
+- ⏳ v1 暂不支持：群聊（忽略并记日志）、图片/文件/视频消息（收到会礼貌提示）、语音回复
+
+## 三、安装
+
+DSH 插件装在 profile 里（默认 `~/.dsh/profiles/web/`）。
+
+> ⚠️ **代码更新提示（重要）**：DSH 的插件加载器会缓存已导入的模块，**修改插件源码后必须重启 DSH 才会加载新代码**（配置项改动则热加载，无需重启）。首次安装也建议装完即重启一次，确保运行的就是最新代码。开发迭代建议用 `link:` 方式安装（见方式 B）。
+
+### 方式 A：官方命令（如本机已安装 dsh CLI）
+
+```powershell
+# 在 DSH 之外打开 PowerShell，执行：
+dsh plugin --profile web add "D:\白话AI柱子哥\dsh-plugins\dsh-wechat-bridge"
+```
+
+> `dsh plugin` 是 DSH 自带的插件管理命令（本质是把参数转发给 pnpm 并同步 bundle 列表）。
+> 装完后**重启 DSH** 使 bundle 生效。
+
+### 方式 B：手动安装（不重启、热加载，本机已采用此方式）
+
+```powershell
+cd "$env:USERPROFILE\.dsh\profiles\web"
+pnpm add "link:D:\白话AI柱子哥\dsh-plugins\dsh-wechat-bridge"
+```
+
+> 用 `link:`（而不是 `file:`）安装：node_modules 里是符号链接，改完源码重启 DSH 即生效，无需重装。
+
+```yaml
+- insert:
+    - id: wechat-bridge
+      name: dsh-wechat-bridge
+```
+
+### 首次启用（扫码）
+
+1. 插件默认 `enabled: true`，装好后没有凭证会自动进入扫码流程：
+   自动弹出浏览器页面（`~/.dsh/wechat-bridge/login.html`）显示二维码。
+2. **手机微信扫码确认**。成功后插件保存凭证（`~/.dsh/wechat-bridge/state.json`），开始收发。
+3. 想先不激活，可在 patch 配置里加 `config: { enabled: false }`。
+
+```yaml
+- insert:
+    - id: wechat-bridge
+      name: dsh-wechat-bridge
+      config:
+        enabled: false
+```
+
+## 四、配置项
+
+可在 DSH 设置界面（插件配置）或 `cordis.patch.yml` 的 `config` 中调整：
+
+| 配置 | 默认 | 说明 |
+|---|---|---|
+| `enabled` | `true` | 是否启用桥接 |
+| `token` / `accountId` | 空 | 已有 iLink 凭证（留空走扫码登录，推荐） |
+| `baseUrl` | `https://ilinkai.weixin.qq.com` | iLink 服务地址 |
+| `allowFrom` | `["*"]` | 白名单（iLink 用户 ID）；建议改成你自己的 ID（登录成功后日志会打印"扫码人"ID） |
+| `workDir` | 空 | AI 工作目录；留空用 DSH 当前工作区 |
+| `blockLinks` | `true` | 拦截纯链接消息（安全铁律） |
+| `streaming` | `true` | 流式分段发送 |
+| `idleTimeoutMins` | `60` | 空闲多久自动结束会话（0=永不） |
+| `maxReplyChars` | `1500` | 单条回复最大字符数（自动分段） |
+| `loginCooldownSecs` | `30` | 登录失败重试间隔 |
+
+## 五、自动化测试
+
+插件自带两套测试（真实 DSH 服务树 + 真实 DeepSeek 模型 + 模拟微信客户端）：
+
+```powershell
+cd D:\白话AI柱子哥\dsh-plugins\dsh-wechat-bridge
+npm install          # 首次
+npm run test         # 全量集成测试（默认 2 轮；--rounds=N 可调）
+npm run test:smoke   # iLink 官方接口冒烟测试（获取二维码，不登录）
+```
+
+集成测试覆盖 24 项断言：真实模型问答回传、`/status` `/help` `/new` 命令、纯链接拦截、
+白名单、`/new` 竞态、多联系人会话隔离、消息排队顺序、`/stop` 中断、凭证过期自动重登、
+重启恢复（凭证持久化）、非流式整段发送、空闲回收、优雅关闭。
+
+> 测试环境自动隔离在 `test/.home`（复制你的凭证与模型配置），不污染真实 DSH 数据。
+
+## 六、安全铁律对照（2026-07-30 生效版）
+
+| 铁律 | 本插件行为 |
+|---|---|
+| 1. 网页命令先确认再执行 | 插件不执行任何来自微信的命令行指令 |
+| 2. 外部内容入库前先过目 | 微信消息只进 AI 会话，插件不直接写 Obsidian/知识库 |
+| 3. 高危操作强制中断 | AI 侧高危操作由 DSH 本身的权限确认机制把关；插件不代答确认 |
+| 4. 微信机器人只做消息转发 | ✅ 插件只做消息中转；纯链接默认拦截，不自动处理微信中的链接 |
+| 5. AI 提方案，人拍板 | 微信端适合问答与产出，涉系统级操作建议回到 DSH 桌面端确认 |
+
+**建议**：`allowFrom` 只保留你自己的微信 ID（登录日志会打印），陌生消息一律不进 AI。
+
+## 七、故障排查
+
+- **日志**：`~/.dsh/wechat-bridge/bridge.log`（登录状态、扫码状态、每条消息处理都记录）
+- **重新扫码**：删除 `~/.dsh/wechat-bridge/state.json` 后重启 DSH（或重载插件）
+- **凭证过期**：插件自动重新进入扫码流程，弹二维码后扫码即可
+- **收不到消息**：确认插件已启用（DSH 设置 → 插件列表），看日志里 `开始接收微信消息…` 是否出现
+- **与 CC-Connect 并存**：两边是独立的 iLink Bot 凭证（各自扫码），互不干扰；同一个凭证不能被两个程序同时长轮询
+
+## 八、已知限制
+
+- 单联系人同一时间只处理一个任务，连续发消息会排队依次处理（与聊天工具习惯一致）
+- 会话保存在内存中，DSH 重启后每个联系人重新开新会话（历史会话记录仍可在 DSH 会话列表查看）
+- 群聊、媒体文件、语音播报（TTS）、"正在输入"状态等属于 v2 规划
+- 极少数情况下模型可能长时间无输出（如 API 抖动），微信端暂无提示；可发 `/stop` 或稍后重发（错误会以页脚形式回传）
+- 微信回复按 `maxReplyChars` 分段（默认 1500 字）；超长内容会拆成多条依次发送
+
+## 九、免责声明
+
+- 微信侧能力受腾讯《微信 ClawBot 功能使用条款》约束，请勿用于骚扰、营销、违反微信规则等用途。
+- 本项目作者不对因违反腾讯条款、误配置白名单、AI 输出内容造成的任何损失负责。

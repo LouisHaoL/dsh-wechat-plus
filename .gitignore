@@ -1,0 +1,22 @@
+# 依赖与生成物
+node_modules/
+*.tsbuildinfo
+
+# 测试环境（含真实凭证副本，绝不可提交）
+test/.home/
+test/.work/
+test/.instrumented/
+test/*.txt
+
+# 日志与状态
+*.log
+bridge.lock
+state.json
+override.json
+chats.json
+login.html
+
+# 系统文件
+Thumbs.db
+Desktop.ini
+.DS_Store

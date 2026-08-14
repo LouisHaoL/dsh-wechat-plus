@@ -1,0 +1,39 @@
+{
+  "name": "dsh-wechat-bridge",
+  "version": "0.1.0",
+  "description": "DSH 插件：把手机微信（iLink ClawBot 协议）桥接到 DeepSeek Harness AI 助手，纯消息中转。",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "scripts": {
+    "test": "node --import ./test/resolve-hooks.mjs test/integration.mjs",
+    "test:smoke": "node scripts/smoke-test.mjs"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4",
+    "wechat-ilink-client": "^0.1.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-agent": "*",
+    "@deepseek-ai/dsh-home-paths": "*",
+    "@deepseek-ai/dsh-llm": "*",
+    "@deepseek-ai/dsh-session": "*",
+    "@deepseek-ai/schemastery": "*"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-agent": { "optional": false },
+    "@deepseek-ai/dsh-home-paths": { "optional": false },
+    "@deepseek-ai/dsh-llm": { "optional": false },
+    "@deepseek-ai/dsh-session": { "optional": false },
+    "@deepseek-ai/schemastery": { "optional": false }
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

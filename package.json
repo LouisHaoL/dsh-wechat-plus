@@ -14,6 +14,7 @@
     "test:smoke": "node scripts/smoke-test.mjs"
   },
   "dependencies": {
+    "msedge-tts": "^2.0.7",
     "qrcode": "^1.5.4",
     "wechat-ilink-client": "^0.1.0"
   },
@@ -25,11 +26,21 @@
     "@deepseek-ai/schemastery": "*"
   },
   "peerDependenciesMeta": {
-    "@deepseek-ai/dsh-agent": { "optional": false },
-    "@deepseek-ai/dsh-home-paths": { "optional": false },
-    "@deepseek-ai/dsh-llm": { "optional": false },
-    "@deepseek-ai/dsh-session": { "optional": false },
-    "@deepseek-ai/schemastery": { "optional": false }
+    "@deepseek-ai/dsh-agent": {
+      "optional": false
+    },
+    "@deepseek-ai/dsh-home-paths": {
+      "optional": false
+    },
+    "@deepseek-ai/dsh-llm": {
+      "optional": false
+    },
+    "@deepseek-ai/dsh-session": {
+      "optional": false
+    },
+    "@deepseek-ai/schemastery": {
+      "optional": false
+    }
   },
   "dsh": {
     "bundle": {

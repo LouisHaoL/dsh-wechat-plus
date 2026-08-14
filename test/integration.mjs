@@ -120,6 +120,11 @@ class FakeClient extends EventEmitter {
     this.typingEvents.push({ userId, status, at: Date.now() })
     return 'ok'
   }
+  async sendMedia(to, filePath, caption, contextToken) {
+    this.mediaSent = this.mediaSent ?? []
+    this.mediaSent.push({ to, filePath, contextToken })
+    return 'ok'
+  }
   async downloadMedia(item) {
     // 1x1 PNG（最小合法图片，供测试）
     return { data: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64'), kind: 'image' }
@@ -623,6 +628,31 @@ console.log('== 阶段 23：正在输入状态提示（typing）==')
     if (onCount < 1) throw new Error(`未见 typing ON（事件：${JSON.stringify(events)}）`)
     if (offCount < 1) throw new Error(`未见 typing OFF（事件：${JSON.stringify(events)}）`)
   })
+}
+
+console.log('== 阶段 24：语音回复（TTS 生成 mp3 → 语音消息发送）==')
+{
+  // 注入 TTS 替身（测试不访问真实 TTS 服务）
+  const { setTtsModuleForTests } = await import(new URL('../lib/index.js', import.meta.url))
+  class FakeTTS {
+    async setMetadata() {}
+    async toFile(file, text) {
+      await import('node:fs').then((fs) => fs.writeFileSync(file, Buffer.from('fake-mp3')))
+    }
+  }
+  setTtsModuleForTests({ MsEdgeTTS: FakeTTS, OUTPUT_FORMAT: { AUDIO_24KHZ_48KBITRATE_MONO_MP3: 'fake' } })
+  bridge.config.tts = true
+  const before = bridge.client.sent.length
+  const beforeMedia = bridge.client.mediaSent?.length ?? 0
+  const mS = '语音-OK'
+  bridge.client.emit('message', makeMsgFrom('u-a', `请只回复下面这行文字：${mS}`))
+  await check('回复后生成并发送语音消息', async () => {
+    await waitFor('收到文字回复', () => tight(sentText(bridge, before)).includes(mS), 180000)
+    await waitFor('收到语音消息', () => (bridge.client.mediaSent?.length ?? 0) > beforeMedia, 60000)
+    const last = bridge.client.mediaSent[bridge.client.mediaSent.length - 1]
+    if (!last.filePath.endsWith('.mp3')) throw new Error(`语音文件格式异常：${last.filePath}`)
+  })
+  bridge.config.tts = false
 }
 
 console.log('== 阶段 9：清理 ==')

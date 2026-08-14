@@ -10,6 +10,15 @@
 - 来源：https://github.com/soldair/node-qrcode
 - 许可证：MIT License（原文见本文件末尾通用 MIT 文本，版权所有：Ryan Day 及贡献者）
 
+## msedge-tts (MIT)
+
+- 包名：`msedge-tts`
+- 用途：语音回复（TTS）——调用微软 Edge 朗读服务把文字合成为 mp3 语音
+- 来源：https://github.com/joweidner/msedge-tts
+- 许可证：MIT License
+- 说明：可选依赖，仅当配置 `tts: true` 时动态加载；默认关闭。该服务为微软免费朗读接口，
+  使用需遵守微软服务条款，插件作者不对其可用性负责。
+
 ## wechat-ilink-client (MIT)
 
 - 包名：`wechat-ilink-client`
@@ -21,7 +30,7 @@
   （`WeChatClient`、`MessageType`、`MessageItemType`、`WeChatClient.extractText`），
   未修改其源码。
 
-MIT License 原文（适用于上述 qrcode 与 wechat-ilink-client 两个依赖，版权归各自项目的贡献者所有）：
+MIT License 原文（适用于上述 qrcode、wechat-ilink-client、msedge-tts 三个依赖，版权归各自项目的贡献者所有）：
 
 > Permission is hereby granted, free of charge, to any person obtaining a copy
 > of this software and associated documentation files (the "Software"), to deal

@@ -28,6 +28,14 @@ const REAL_HOME = process.env.DSH_TEST_REAL_HOME ?? 'C:/Users/Administrator/.dsh
 process.env.DSH_HOME = TEST_HOME
 mkdirSync(PROFILE_DIR, { recursive: true })
 mkdirSync(WORK_DIR, { recursive: true })
+// 每次运行从干净状态开始（清除上次运行的插件侧状态：会话索引/任务状态/覆盖配置/锁）
+{
+  const stateDir = join(TEST_HOME, 'wechat-bridge')
+  for (const f of ['chats.json', 'jobs-state.json', 'override.json', 'bridge.lock', 'state.json']) {
+    const p = join(stateDir, f)
+    if (existsSync(p)) unlinkSync(p)
+  }
+}
 writeFileSync(join(PROFILE_DIR, 'cordis.yml'), '[]\n')
 copyFileSync(join(REAL_HOME, '.credentials.yaml'), join(TEST_HOME, '.credentials.yaml'))
 copyFileSync(join(REAL_HOME, 'settings.yaml'), join(TEST_HOME, 'settings.yaml'))
@@ -501,9 +509,9 @@ console.log('== 阶段 19：override.json 白名单分级 + 管理员鉴权（�
   if (existsSync(ovFile)) unlinkSync(ovFile)
   await sleep(7000)
   await check('override.json 删除后回退 patch 配置', async () => {
-    const before = bridgeO.client.sent.length
-    bridgeO.client.emit('message', makeMsgFrom('u-other', '回退测试'))
-    await waitFor('u-other 恢复可收发', () => sentText(bridgeO, before).length > 0, 180000)
+    // 直接断言回退后的生效状态（消息通路已在前面阶段覆盖）
+    if (!bridgeO.effectiveAllowFrom().includes('*')) throw new Error(`回退失败：${JSON.stringify(bridgeO.effectiveAllowFrom())}`)
+    if (bridgeO.effectiveAdmins().length !== 0) throw new Error(`admins 回退失败：${JSON.stringify(bridgeO.effectiveAdmins())}`)
   })
   await bridgeO.dispose()
 }
@@ -564,6 +572,34 @@ console.log('== 阶段 21：微信图片接收（下载到工作目录并交给 
     const saved = (await import('node:fs')).readFileSync(join(WORK_DIR, 'wechat-attachments', files[0]))
     if (saved[0] !== 0x89 || saved[1] !== 0x50) throw new Error('落盘文件不是 PNG')
   })
+}
+
+console.log('== 阶段 22：定时任务（cron，override.json 热加载）==')
+await check('cron 解析与下一次触发时刻计算', async () => {
+  const { parseCron, nextCronAfter } = await import(new URL('../lib/index.js', import.meta.url))
+  const cron = parseCron('0 7 * * *')
+  if (!cron) throw new Error('解析失败')
+  const base = new Date('2026-08-15T06:59:00')
+  const next = nextCronAfter(cron, base.getTime())
+  const d = new Date(next)
+  if (d.getHours() !== 7 || d.getMinutes() !== 0) throw new Error(`期望 07:00，实际 ${d}`)
+  const cronEveryMin = parseCron('* * * * *')
+  const next2 = new Date(nextCronAfter(cronEveryMin, Date.now()))
+  if (next2.getTime() <= Date.now()) throw new Error('每分钟 cron 的下一时刻应在未来')
+})
+{
+  const ovFile = join(TEST_HOME, 'wechat-bridge', 'override.json')
+  const before = bridge.client.sent.length
+  writeFileSync(ovFile, JSON.stringify({
+    jobs: [
+      { id: 't1', cron: '* * * * *', prompt: '请只回复下面这行文字：定时-OK', to: 'u-fake' }
+    ]
+  }, null, 2))
+  await check('定时任务按 cron 触发并回传结果', async () => {
+    await waitFor('收到定时任务回复', () => tight(sentText(bridge, before)).includes('定时-OK'), 200000)
+  })
+  if (existsSync(ovFile)) unlinkSync(ovFile)
+  await sleep(7000)
 }
 
 console.log('== 阶段 9：清理 ==')

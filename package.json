@@ -1,6 +1,6 @@
 {
   "name": "dsh-wechat-bridge",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "DSH 插件：把手机微信（iLink ClawBot 协议）桥接到 DeepSeek Harness AI 助手，纯消息中转。",
   "type": "module",
   "main": "lib/index.js",

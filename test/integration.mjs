@@ -673,6 +673,22 @@ console.log('== 阶段 24：语音回复（TTS 子进程隔离 → 语音消息�
   setTtsWorkerFactoryForTests(null)
 }
 
+console.log('== 阶段 25：文件回传（outbox 自动发送）==')
+{
+  const chatA = bridge.chats.get('u:u-a')
+  if (!chatA) throw new Error('u-a 会话不存在')
+  const dir = bridge.outboxDirFor(chatA.key)
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+  writeFileSync(join(dir, 'test-report.txt'), 'hello from outbox')
+  const beforeMedia = bridge.client.mediaSent?.length ?? 0
+  await check('outbox 文件自动发送并移入 sent', async () => {
+    await waitFor('文件发送', () => (bridge.client.mediaSent?.length ?? 0) > beforeMedia, 15000)
+    const last = bridge.client.mediaSent[bridge.client.mediaSent.length - 1]
+    if (!last.filePath.endsWith('test-report.txt')) throw new Error(`发送文件异常：${last.filePath}`)
+    if (!existsSync(join(dir, 'sent', 'test-report.txt'))) throw new Error('文件未移入 sent/')
+  })
+}
+
 console.log('== 阶段 9：清理 ==')
 await bridge.dispose()
 await ctx.fiber.dispose()

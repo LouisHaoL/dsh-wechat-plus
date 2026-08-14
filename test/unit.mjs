@@ -53,6 +53,19 @@ check('消毒：普通尖括号文本不误伤', () => {
   assert.ok(out.includes('1 <2'), `误删：${JSON.stringify(out)}`)
 })
 
+check('消毒：剥离审批请求包装（gongfeng-tool 实测格式）', () => {
+  const s = createStreamSanitizer()
+  let out = ''
+  out += s.feed('好的，我现在查天气：<gongfeng-tool permission="ask"')
+  out += s.feed(' requires-approval="true"><type>approval-request</type><tool>RunCommand</tool>')
+  out += s.feed('<command>curl open-meteo</command></gongfeng-tool> 查完了，上海今天 22 度。')
+  out += s.flush()
+  assert.ok(!out.includes('gongfeng'), '审批包装泄漏')
+  assert.ok(!out.includes('curl'), '命令内容泄漏')
+  assert.ok(out.includes('查完了，上海今天 22 度。'), '丢失正文')
+  assert.ok(out.includes('好的，我现在查天气：'), '丢失前言')
+})
+
 check('cron：解析 5 段表达式', () => {
   const cron = parseCron('0 7 * * 1-5')
   assert.ok(cron, '解析失败')

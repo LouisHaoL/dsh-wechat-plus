@@ -630,17 +630,16 @@ console.log('== 阶段 23：正在输入状态提示（typing）==')
   })
 }
 
-console.log('== 阶段 24：语音回复（TTS 生成 mp3 → 语音消息发送）==')
+console.log('== 阶段 24：语音回复（TTS 子进程隔离 → 语音消息发送）==')
 {
-  // 注入 TTS 替身（测试不访问真实 TTS 服务）
-  const { setTtsModuleForTests } = await import(new URL('../lib/index.js', import.meta.url))
-  class FakeTTS {
-    async setMetadata() {}
-    async toFile(file, text) {
-      await import('node:fs').then((fs) => fs.writeFileSync(file, Buffer.from('fake-mp3')))
-    }
-  }
-  setTtsModuleForTests({ MsEdgeTTS: FakeTTS, OUTPUT_FORMAT: { AUDIO_24KHZ_48KBITRATE_MONO_MP3: 'fake' } })
+  // 注入 TTS 合成替身（测试不访问真实 TTS 服务，且验证异常不拖垮主流程）
+  const { setTtsWorkerFactoryForTests } = await import(new URL('../lib/index.js', import.meta.url))
+  const fs = await import('node:fs')
+  const fakeMp3 = join(WORK_DIR, 'fake-tts.mp3')
+  setTtsWorkerFactoryForTests(async (text, outDir, voice) => {
+    fs.writeFileSync(fakeMp3, Buffer.from('fake-mp3'))
+    return fakeMp3
+  })
   bridge.config.tts = true
   const before = bridge.client.sent.length
   const beforeMedia = bridge.client.mediaSent?.length ?? 0
@@ -652,7 +651,17 @@ console.log('== 阶段 24：语音回复（TTS 生成 mp3 → 语音消息发送
     const last = bridge.client.mediaSent[bridge.client.mediaSent.length - 1]
     if (!last.filePath.endsWith('.mp3')) throw new Error(`语音文件格式异常：${last.filePath}`)
   })
+
+  // 回归：TTS 合成失败（第三方库异常）不影响文字回复与整体运行
+  setTtsWorkerFactoryForTests(async () => { throw new Error('模拟 TTS 服务不可达') })
+  const before2 = bridge.client.sent.length
+  const mF = 'TTS失败-OK'
+  bridge.client.emit('message', makeMsgFrom('u-a', `请只回复下面这行文字：${mF}`))
+  await check('TTS 失败时文字回复不受影响', async () => {
+    await waitFor('收到文字回复', () => tight(sentText(bridge, before2)).includes(mF), 180000)
+  })
   bridge.config.tts = false
+  setTtsWorkerFactoryForTests(null)
 }
 
 console.log('== 阶段 9：清理 ==')

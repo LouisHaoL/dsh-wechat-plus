@@ -4,6 +4,9 @@
 
 ## [未发布]
 
+### 修复
+- **peer 依赖解析**：`postinstall` 自动把 `@deepseek-ai/*` 以 junction 链接到 DSH 主机 node_modules，避免 `npm install`（尤其 `--legacy-peer-deps`）重建后 DSH 启动报 `ERR_MODULE_NOT_FOUND: @deepseek-ai/schemastery`。
+
 ### 新增
 - **微信图片接收**：收到图片自动下载到工作目录 `wechat-attachments/`，把路径交给 AI 用工具（OCR/看图）分析后回复；发送前回执"📷 正在分析"。
 - **定时任务**：`override.json` 配置 `jobs`（5 段 cron），定时给指定联系人派活，结果流式回传；目标限管理员、防篡改；`jobs-state.json` 记录最近触发，重启不重复。

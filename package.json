@@ -11,7 +11,8 @@
   "license": "MIT",
   "scripts": {
     "test": "node --import ./test/resolve-hooks.mjs test/integration.mjs",
-    "test:smoke": "node scripts/smoke-test.mjs"
+    "test:smoke": "node scripts/smoke-test.mjs",
+    "postinstall": "node scripts/link-host-peers.mjs"
   },
   "dependencies": {
     "msedge-tts": "^2.0.7",

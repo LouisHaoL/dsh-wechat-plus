@@ -77,6 +77,12 @@ pnpm add "link:D:\白话AI柱子哥\dsh-plugins\dsh-wechat-bridge"
 
 > 用 `link:`（而不是 `file:`）安装：node_modules 里是符号链接，改完源码重启 DSH 即生效，无需重装。
 
+> ⚠️ **运行时 peer 依赖解析**：插件目录在 DSH 应用安装树之外，Node ESM 解析够不到主机自带的
+> `@deepseek-ai/*` 包（会报 `ERR_MODULE_NOT_FOUND: Cannot find package '@deepseek-ai/schemastery'`）。
+> 因此本仓库通过 `postinstall`（`scripts/link-host-peers.mjs`）自动把 5 个 peer 包以 junction
+> 链接到主机安装目录的 node_modules——**在插件仓库里跑过 `npm install` 即自动建立**。
+> 若曾用 `--legacy-peer-deps` 跳过，可手动执行 `node scripts/link-host-peers.mjs` 补链。
+
 ```yaml
 - insert:
     - id: wechat-bridge

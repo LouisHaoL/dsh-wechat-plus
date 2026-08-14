@@ -112,6 +112,14 @@ class FakeClient extends EventEmitter {
     this.sent.push({ to, text, contextToken })
     return 'ok'
   }
+  async getTypingTicket(userId) {
+    return { typing_ticket: 'fake-ticket' }
+  }
+  async sendTyping(userId, ticket, status) {
+    this.typingEvents = this.typingEvents ?? []
+    this.typingEvents.push({ userId, status, at: Date.now() })
+    return 'ok'
+  }
   async downloadMedia(item) {
     // 1x1 PNG（最小合法图片，供测试）
     return { data: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64'), kind: 'image' }
@@ -600,6 +608,21 @@ await check('cron 解析与下一次触发时刻计算', async () => {
   })
   if (existsSync(ovFile)) unlinkSync(ovFile)
   await sleep(7000)
+}
+
+console.log('== 阶段 23：正在输入状态提示（typing）==')
+{
+  const before = bridge.client.sent.length
+  const mT = '输入中-OK'
+  bridge.client.emit('message', makeMsgFrom('u-a', `请只回复下面这行文字：${mT}`))
+  await check('思考时发送 typing ON、结束发送 OFF', async () => {
+    await waitFor('收到回复', () => tight(sentText(bridge, before)).includes(mT), 180000)
+    const events = bridge.client.typingEvents ?? []
+    const onCount = events.filter((e) => e.status === 1).length
+    const offCount = events.filter((e) => e.status === 2).length
+    if (onCount < 1) throw new Error(`未见 typing ON（事件：${JSON.stringify(events)}）`)
+    if (offCount < 1) throw new Error(`未见 typing OFF（事件：${JSON.stringify(events)}）`)
+  })
 }
 
 console.log('== 阶段 9：清理 ==')

@@ -104,6 +104,10 @@ class FakeClient extends EventEmitter {
     this.sent.push({ to, text, contextToken })
     return 'ok'
   }
+  async downloadMedia(item) {
+    // 1x1 PNG（最小合法图片，供测试）
+    return { data: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64'), kind: 'image' }
+  }
   async login(opts = {}) {
     this.loginCalls++
     FakeClient.totalLogins = (FakeClient.totalLogins ?? 0) + 1
@@ -539,6 +543,27 @@ console.log('== 阶段 20：会话持久化（重启后恢复上下文）==')
   await bridgeP2.dispose()
   // 清理索引，避免影响后续
   if (existsSync(indexFile)) unlinkSync(indexFile)
+}
+
+console.log('== 阶段 21：微信图片接收（下载到工作目录并交给 AI）==')
+{
+  const base = bridge.client.sent.length
+  const mImg = '图测-OK'
+  const imgMsg = makeMsg(`请只回复下面这行文字：${mImg}`, {
+    item_list: [
+      { type: 1, text_item: { text: `请只回复下面这行文字：${mImg}` } },
+      { type: 2, image_item: { aeskey: 'AAECAwQFBgcICQoLDA0ODw==' } }
+    ]
+  })
+  bridge.client.emit('message', imgMsg)
+  await check('图片消息：回执 + 文件落盘 + AI 回复', async () => {
+    await waitFor('收到图片回执', () => sentText(bridge, base).includes('收到 1 张图片'), 60000)
+    await waitFor('AI 回复到达', () => tight(sentText(bridge, base)).includes(mImg), 240000)
+    const files = existsSync(WORK_DIR) ? (await import('node:fs')).readdirSync(join(WORK_DIR, 'wechat-attachments')).filter((f) => f.startsWith('wechat-img-')) : []
+    if (files.length === 0) throw new Error('图片文件未落盘')
+    const saved = (await import('node:fs')).readFileSync(join(WORK_DIR, 'wechat-attachments', files[0]))
+    if (saved[0] !== 0x89 || saved[1] !== 0x50) throw new Error('落盘文件不是 PNG')
+  })
 }
 
 console.log('== 阶段 9：清理 ==')

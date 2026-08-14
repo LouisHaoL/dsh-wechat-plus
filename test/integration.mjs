@@ -299,6 +299,14 @@ for (let round = 1; round <= ROUNDS; round++) {
     await check('空闲会话被自动回收', async () => {
       if (bridge.chats.size !== 0) throw new Error(`仍有 ${bridge.chats.size} 个会话`)
     })
+    await check('空闲回收后索引保留 contextToken（定时推送需要）', async () => {
+      const indexFile = join(TEST_HOME, 'wechat-bridge', 'chats.json')
+      if (!existsSync(indexFile)) throw new Error('chats.json 不存在')
+      const idx = JSON.parse(readFileSync(indexFile, 'utf8'))
+      const entry = idx['u:u-fake']
+      if (!entry?.contextToken) throw new Error(`空闲回收丢失了 contextToken：${JSON.stringify(idx)}`)
+      if (entry.sessionId) throw new Error('空闲回收后不应保留 sessionId')
+    })
     bridge.config.idleTimeoutMins = 0
   }
 }
@@ -542,10 +550,11 @@ console.log('== 阶段 20：会话持久化（重启后恢复上下文）==')
   const sessionP1 = chatP1?.sessionId
   if (!sessionP1) throw new Error('P1 未创建会话')
   const indexFile = join(TEST_HOME, 'wechat-bridge', 'chats.json')
-  await check('会话索引已落盘', async () => {
+  await check('会话索引已落盘且保留 contextToken', async () => {
     if (!existsSync(indexFile)) throw new Error('chats.json 不存在')
     const idx = JSON.parse(readFileSync(indexFile, 'utf8'))
     if (idx['u:u-x']?.sessionId !== sessionP1) throw new Error('索引中无该会话')
+    if (idx['u:u-x']?.contextToken !== 'ctx-1') throw new Error(`contextToken 未持久化：${JSON.stringify(idx['u:u-x'])}`)
   })
   await bridgeP1.dispose()
 

@@ -5,6 +5,7 @@
 ## [未发布]
 
 ### 修复
+- **TTS 子进程隔离**：msedge-tts 内部存在无 catch 的游离 Promise，网络异常时未处理拒绝会触发 DSH 的 fail-loud 机制导致整个应用周期性退出；TTS 现全部在子进程（`scripts/tts-worker.mjs`）执行，第三方库任何异常都不会波及 DSH。注：本机网络实测微软 Edge 朗读服务不可达，TTS 保持默认关闭；开启时服务不可达会静默跳过，不影响文字回复。
 - **peer 依赖解析**：`postinstall` 自动把 `@deepseek-ai/*` 以 junction 链接到 DSH 主机 node_modules，避免 `npm install`（尤其 `--legacy-peer-deps`）重建后 DSH 启动报 `ERR_MODULE_NOT_FOUND: @deepseek-ai/schemastery`。
 
 ### 新增

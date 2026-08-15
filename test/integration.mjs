@@ -262,8 +262,8 @@ for (let round = 1; round <= ROUNDS; round++) {
     const chat = bridge.chats.get('u:u-fake')
     if (!chat?.agent) throw new Error('Agent 未创建')
   })
-  await check('回复末尾附带用量统计（⚙ 模型 · out · in · cw · cr · ctx%）', async () => {
-    await waitFor('收到用量尾注', () => /⚙ [\w.-]+ · out [\d.k]+ in [\d.k]+ cw \d+(\.\d+k)? cr [\d.k]+ ctx \d+%/.test(sentText(bridge, roundBase)), 30000)
+  await check('回复末尾附带用量统计（严格 GUI 格式 + ~/.dsh-wechat-bridge）', async () => {
+    await waitFor('收到用量尾注', () => /[\w.-]+ · out [\d.k]+ · in [\d.k]+ cw \d+(\.\d+k)? cr [\d.k]+ · ctx \d+% ~\/\.dsh-wechat-bridge/.test(sentText(bridge, roundBase)), 30000)
   })
 
   console.log('== 阶段 4：命令 ==')

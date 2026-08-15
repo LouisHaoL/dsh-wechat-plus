@@ -1,7 +1,7 @@
 // 纯单元测试：不依赖 DSH 服务树，可在 GitHub Actions CI 上运行。
 // 覆盖：流式消毒器、cron 解析器、流式发送安全断点、微信排版渲染器（其余全链路见 test/integration.mjs）。
 import assert from 'node:assert/strict'
-import { createStreamSanitizer, parseCron, nextCronAfter, safeSendCut, createWeChatMarkdownRenderer } from '../lib/pure.js'
+import { createStreamSanitizer, parseCron, nextCronAfter, safeSendCut, createWeChatMarkdownRenderer, fmtTokens } from '../lib/pure.js'
 
 let passed = 0
 const failures = []
@@ -144,6 +144,14 @@ check('排版：流式分片 + 代码块原样透传', () => {
   out += r.flush()
   assert.ok(out.includes('加粗开始结束'), '跨片加粗应还原')
   assert.ok(out.includes('code **raw**'), '代码块应原样透传')
+})
+
+check('fmtTokens：用量数字格式化', () => {
+  assert.equal(fmtTokens(743), '743')
+  assert.equal(fmtTokens(1300), '1.3k')
+  assert.equal(fmtTokens(111400), '111.4k')
+  assert.equal(fmtTokens(0), '0')
+  assert.equal(fmtTokens('bad'), '0')
 })
 
 console.log(`\n========== 单元测试结果：${passed} 通过，${failures.length} 失败 ==========`)

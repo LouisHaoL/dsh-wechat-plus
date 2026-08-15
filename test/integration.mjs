@@ -28,10 +28,10 @@ const REAL_HOME = process.env.DSH_TEST_REAL_HOME ?? 'C:/Users/Administrator/.dsh
 process.env.DSH_HOME = TEST_HOME
 mkdirSync(PROFILE_DIR, { recursive: true })
 mkdirSync(WORK_DIR, { recursive: true })
-// 每次运行从干净状态开始（清除上次运行的插件侧状态：会话索引/任务状态/覆盖配置/锁）
+// 每次运行从干净状态开始（清除上次运行的插件侧状态：会话索引/任务状态/覆盖配置/锁/日志）
 {
   const stateDir = join(TEST_HOME, 'wechat-bridge')
-  for (const f of ['chats.json', 'jobs-state.json', 'override.json', 'bridge.lock', 'state.json']) {
+  for (const f of ['chats.json', 'jobs-state.json', 'override.json', 'bridge.lock', 'state.json', 'bridge.log']) {
     const p = join(stateDir, f)
     if (existsSync(p)) unlinkSync(p)
   }
@@ -242,6 +242,9 @@ for (let round = 1; round <= ROUNDS; round++) {
     const chat = bridge.chats.get('u:u-fake')
     if (!chat?.agent) throw new Error('Agent 未创建')
   })
+  await check('回复末尾附带用量统计（⚙ 模型 · ctx；out/in 取决于 provider 锚点）', async () => {
+    await waitFor('收到用量尾注', () => /⚙ [\w.-]+ · (out [\d.k]+ · )?(in [\d.k]+ · )?ctx [\d.k]+/.test(sentText(bridge, roundBase)), 30000)
+  })
 
   console.log('== 阶段 4：命令 ==')
   bridge.client.emit('message', makeMsg('/status'))
@@ -355,17 +358,19 @@ console.log('== 阶段 11：连续消息排队（同一联系人）==')
 
 console.log('== 阶段 12：/stop 中止进行中的任务 ==')
 {
-  const base = bridge.client.sent.length
-  // 确定性长任务：让模型持续输出直到收到停止指令（避免"重复 N 遍"被模型提前结束，
-  // 导致 /stop 到达时任务已完成而命中不了"忙"分支——该抖动历史上多次出现）。
-  // 「稳定测试。」含句号，保证流式分段在回合中持续发出。
-  bridge.client.emit('message', makeMsgFrom('u-a', '请连续输出「稳定测试。」这句话，每行一个，直到收到停止指令为止，不要自行结束'))
-  // 等任务确实开始产生输出（部分流式回传已发生）再 stop，保证命中"忙"分支
-  await waitFor('任务开始产出', () => sentText(bridge, base).includes('稳定测试'), 180000)
-  bridge.client.emit('message', makeMsgFrom('u-a', '/stop'))
+  // 确定性长任务 + 最多 3 次重试：让模型持续输出直到收到停止指令，/stop 才能命中"忙"分支。
+  // 模型偶尔会提前自行结束（提前完成的轮次 /stop 会得到"当前没有正在执行的任务"，不算成功，重试）。
+  let stopped = false
+  for (let attempt = 1; attempt <= 3 && !stopped; attempt++) {
+    const base = bridge.client.sent.length
+    bridge.client.emit('message', makeMsgFrom('u-a', '请连续输出「稳定测试。」这句话，每行一个，直到收到停止指令为止，不要自行结束'))
+    await waitFor('任务开始产出', () => sentText(bridge, base).includes('稳定测试'), 180000)
+    bridge.client.emit('message', makeMsgFrom('u-a', '/stop'))
+    stopped = await probe(`收到停止确认（第 ${attempt} 次）`, () => sentText(bridge, base).includes('已请求停止当前任务'), 30000)
+  }
   await check('/stop 后收到停止确认与中止页脚', async () => {
-    await waitFor('收到停止确认', () => sentText(bridge, base).includes('已请求停止当前任务'), 30000)
-    await waitFor('收到中止页脚', () => sentText(bridge, base).includes('（已停止）'), 60000)
+    if (!stopped) throw new Error('3 次尝试均未在任务进行中命中 /stop（模型每次都提前结束）')
+    await waitFor('收到中止页脚', () => tight(sentText(bridge)).includes('（已停止）'), 60000)
   })
 }
 
@@ -432,6 +437,14 @@ console.log('== 阶段 16：fiber 卸载时资源清理（ctx.effect 生命周�
   await waitFor('新实例进入运行态', () => [...FakeClient.instances].some((c) => !c.preExisting && c.started), 15000)
   const scoped = [...FakeClient.instances].filter((c) => !c.preExisting && c.started && !c.stopped)
   if (scoped.length === 0) throw new Error('未发现由 apply 创建的运行中客户端')
+  await check('专属文件工具注册成功（无 output 声明错误）', async () => {
+    const logFile = join(TEST_HOME, 'wechat-bridge', 'bridge.log')
+    if (!existsSync(logFile)) throw new Error('测试桥接日志不存在')
+    const content = readFileSync(logFile, 'utf8')
+    const idx = content.lastIndexOf('已注册微信专属工具')
+    if (idx < 0) throw new Error(`工具注册日志缺失：${content.slice(-300)}`)
+    if (content.slice(idx).includes('工具注册失败')) throw new Error(`本轮运行仍有注册失败：${content.slice(idx)}`)
+  })
   await fiber.dispose()
   await check('卸载后该 fiber 创建的客户端全部停止（无泄漏）', async () => {
     await waitFor('客户端停止', () => scoped.every((c) => c.stopped), 10000)

@@ -89,6 +89,12 @@ async function readBody(res) {
   return new TextDecoder("utf-8", { fatal: false }).decode(buf);
 }
 
+/** 剥离终端 ANSI 转义序列（部分接口如 wttr.in 会返回带颜色的文本）。 */
+function stripAnsi(text) {
+  // eslint-disable-next-line no-control-regex
+  return text.replace(/\x1b\[[0-9;]*m/g, '')
+}
+
 async function fetchUrl(url, format, maxChars, startIndex) {
   let parsed;
   try {
@@ -123,7 +129,9 @@ async function fetchUrl(url, format, maxChars, startIndex) {
 
   if (outFormat !== "html" && outFormat !== "json") {
     if (contentType.includes("html") || text.slice(0, 1000).match(/<\s*(html|body|div|p|meta)[\s>]/i)) {
-      text = htmlToText(text);
+      text = htmlToText(text)
+    } else {
+      text = stripAnsi(text)
     }
   }
 

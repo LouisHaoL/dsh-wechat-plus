@@ -2,6 +2,13 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。所有日期为本地日期。
 
+## [0.4.1] - 2026-08-15
+
+### 发布
+- **正式发布到 npm**：`@zxz9988/dsh-wechat-bridge`（0.4.1 为 npm 首个公开版本）。用户可 `npm i @zxz9988/dsh-wechat-bridge` 或 `dsh plugin --profile web add @zxz9988/dsh-wechat-bridge` 安装。
+- **包名 scoped 化**：bundle 补丁行名、profile 依赖键、bundles 条目三处同步改为 scoped 全名（DSH 加载器按 node_modules 目录名解析，必须一致）。npm 上非 scoped 同名包（gtaifu 的 `dsh-wechat-bridge`）与本项目无关。
+- 说明：0.4.0 曾短暂发布，因 npm registry 读副本延迟导致匿名读取数十分钟不可见（写入侧已确认版本存在）；随后发布 0.4.1 并确认公开可见。两版本均已在线。
+
 ## [0.4.0] - 2026-08-15
 
 ### 新增

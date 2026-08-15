@@ -28,6 +28,7 @@
 - ✅ **会话持久化**：DSH 重启后按联系人恢复上一次对话上下文
 - ✅ 语音消息（转写文字后交给 AI）、文字消息
 - ✅ **图片接收**：微信发图自动下载到工作目录，AI 用工具（OCR/看图）分析后回复
+- ✅ **网页抓取（可选）**：配套极简 MCP fetch 服务器（`mcp/fetch-server/`），AI 仅在用户明确要求时抓取公开网页（内置内网地址拦截、20 秒超时、3 MB 上限），无需桌面端审批
 - ✅ **文件回传**：AI 把生成的图表/文档保存到 `wechat-outbox/<联系人>/` 即自动发送到你微信
 - ✅ **定时任务**：cron 定时给指定联系人派活（如"每天早上 7 点推送行业头条"），配置热加载、无需重启
 - ✅ **"正在输入…"提示**：AI 思考时微信端显示输入中
@@ -81,9 +82,9 @@ pnpm add "link:D:\白话AI柱子哥\dsh-plugins\dsh-wechat-bridge"
 
 > ⚠️ **运行时 peer 依赖解析**：插件目录在 DSH 应用安装树之外，Node ESM 解析够不到主机自带的
 > `@deepseek-ai/*` 包（会报 `ERR_MODULE_NOT_FOUND: Cannot find package '@deepseek-ai/schemastery'`）。
-> 因此本仓库通过 `postinstall`（`scripts/link-host-peers.mjs`）自动把 5 个 peer 包以 junction
+> 因此本仓库通过 `postinstall`（`scripts/ensure-host-junction.mjs`）自动把 peer 包以 junction
 > 链接到主机安装目录的 node_modules——**在插件仓库里跑过 `npm install` 即自动建立**。
-> 若曾用 `--legacy-peer-deps` 跳过，可手动执行 `node scripts/link-host-peers.mjs` 补链。
+> 若曾用 `--legacy-peer-deps` 跳过，可手动执行 `node scripts/ensure-host-junction.mjs` 补链。
 
 ```yaml
 - insert:
@@ -105,6 +106,34 @@ pnpm add "link:D:\白话AI柱子哥\dsh-plugins\dsh-wechat-bridge"
       config:
         enabled: false
 ```
+
+### 可选：网页抓取（MCP fetch 服务器）
+
+让微信里的 AI 真正能读网页内容（回答"帮我看下这篇新闻讲了什么"这类请求）。自研约 150 行极简实现，只依赖官方 [`@modelcontextprotocol/sdk`](https://www.npmjs.com/package/@modelcontextprotocol/sdk)（MIT）与 `zod`（MIT），不引入任何第三方 fetch 服务器。
+
+```powershell
+cd mcp/fetch-server
+npm install
+```
+
+然后在 profile 的 `cordis.patch.yml` 里挂载（`dsh-mcp-client` 由 DSH 自带，工具名固定为 `mcp__fetch__fetch`；`failOnStartupError: true` 让启动失败可见而不是静默）：
+
+```yaml
+- insert:
+    - id: mcp-fetch
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: fetch
+        transport: stdio
+        command: 'C:\Program Files\nodejs\node.exe'   # 换成你机器上 node.exe 的绝对路径
+        args:
+          - 'D:\dsh-wechat-bridge\mcp\fetch-server\server.mjs'
+        cwd: 'D:\dsh-wechat-bridge\mcp\fetch-server'
+        toolCallTimeoutMs: 60000
+        failOnStartupError: true
+```
+
+安全设计：仅 GET 公开 http/https 地址；拒绝 localhost/`*.local`/私网与环回 IPv4/IPv6（SSRF 防护）；20 秒超时、3 MB 下载上限、单次最多返回 10 万字符并支持 `startIndex` 分页续读；不执行任何抓取到的脚本。该工具无需桌面端审批即可被微信侧智能体调用，但**只有用户明确要求抓取时 AI 才会调用**（安全铁律第 4 条）。
 
 ## 四、配置项
 
@@ -148,7 +177,7 @@ npm run test:smoke   # iLink 官方接口冒烟测试（获取二维码，不登
 | 1. 网页命令先确认再执行 | 插件不执行任何来自微信的命令行指令 |
 | 2. 外部内容入库前先过目 | 微信消息只进 AI 会话，插件不直接写 Obsidian/知识库 |
 | 3. 高危操作强制中断 | AI 侧高危操作由 DSH 本身的权限确认机制把关；插件不代答确认 |
-| 4. 微信机器人只做消息转发 | ✅ 插件只做消息中转；纯链接默认拦截，不自动处理微信中的链接 |
+| 4. 微信机器人只做消息转发 | ✅ 插件只做消息中转；纯链接默认拦截，不自动处理微信中的链接；可选网页抓取仅在用户明确要求时进行 |
 | 5. AI 提方案，人拍板 | 微信端适合问答与产出，涉系统级操作建议回到 DSH 桌面端确认 |
 
 **建议**：`allowFrom` 只保留你自己的微信 ID（登录日志会打印），陌生消息一律不进 AI。
@@ -164,8 +193,7 @@ npm run test:smoke   # iLink 官方接口冒烟测试（获取二维码，不登
 ## 八、已知限制
 
 - 单联系人同一时间只处理一个任务，连续发消息会排队依次处理（与聊天工具习惯一致）
-- 会话保存在内存中，DSH 重启后每个联系人重新开新会话（历史会话记录仍可在 DSH 会话列表查看）
-- 群聊、媒体文件、语音播报（TTS）、"正在输入"状态等属于 v2 规划
+- 群聊、入站文件/视频消息暂不支持（纯链接消息默认拦截）
 - 极少数情况下模型可能长时间无输出（如 API 抖动），微信端暂无提示；可发 `/stop` 或稍后重发（错误会以页脚形式回传）
 - 微信回复按 `maxReplyChars` 分段（默认 1500 字）；超长内容会拆成多条依次发送
 

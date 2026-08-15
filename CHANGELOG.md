@@ -4,6 +4,9 @@
 
 ## [0.3.0] - 2026-08-15
 
+### 新增
+- **网页抓取（MCP fetch 服务器）**：配套极简 MCP 服务器 `mcp/fetch-server/`（约 150 行，仅依赖官方 `@modelcontextprotocol/sdk` 与 `zod`，均为 MIT）。经 DSH 自带 `@deepseek-ai/dsh-mcp-client` 挂载后，微信侧 AI 可调用 `mcp__fetch__fetch` 抓取公开网页（HTML→纯文本/原始 HTML/JSON，支持分页续读）。内置 SSRF 防护（拒绝 localhost/私网/环回地址）、20 秒超时、3 MB 下载上限、单次最多 10 万字符。官方 `@modelcontextprotocol/server-fetch` 已从 npm 下架，且社区替代包维护状况不明，故按"MIT-only、极简可控"原则自研。该工具零权限要求、不经过审批 seam，微信（无桌面审批 UI）可直接调用。
+
 ### 移除
 - **TTS 语音播报**：按"辅助功能若影响稳定性则删除"原则整体移除（代码、依赖 msedge-tts、子进程脚本）。该功能依赖境外第三方语音服务，本机网络实测不可达且历史上两次引发应用级故障；移除后系统依赖面更小、更稳。如未来需要，可作为独立可选插件重新实现。
 

@@ -1,7 +1,7 @@
 // 纯单元测试：不依赖 DSH 服务树，可在 GitHub Actions CI 上运行。
 // 覆盖：流式消毒器、cron 解析器（其余全链路见 test/integration.mjs）。
 import assert from 'node:assert/strict'
-import { createStreamSanitizer, parseCron, nextCronAfter } from '../lib/index.js'
+import { createStreamSanitizer, parseCron, nextCronAfter, safeSendCut } from '../lib/index.js'
 
 let passed = 0
 const failures = []
@@ -89,6 +89,25 @@ check('cron：nextCronAfter 计算下一触发时刻', () => {
   const everyMin = parseCron('* * * * *')
   const nextMin = new Date(nextCronAfter(everyMin, Date.now()))
   assert.ok(nextMin.getTime() > Date.now(), '下一时刻应在未来')
+})
+
+check('safeSendCut：无断点返回 -1，句读后断开不切词', () => {
+  assert.equal(safeSendCut('今天天气很', 160), -1, '纯文本无断点应返回 -1')
+  assert.equal(safeSendCut('今天天气很好，明天', 160), 7, '应在逗号后断开')
+  assert.equal(safeSendCut('好的。', 160), 3, '应在句号后断开')
+})
+
+check('safeSendCut：URL 在 / ? = 处断开（避免切碎链接）', () => {
+  const url = 'https://wttr.in/Shanghai?format=j1'
+  const cut = safeSendCut(url, 160)
+  assert.ok(cut > 0 && cut < url.length, 'URL 应能找到断点')
+  assert.equal(url[cut - 1], '=', '最后一个断点应是 =')
+})
+
+check('safeSendCut：只搜索末尾 window，前缀断点不计', () => {
+  const text = '第一段。第二段' // 「第一段。」是 4 字符前的前缀断点
+  assert.equal(safeSendCut(text, 3), -1, '窗口外的断点不应使用')
+  assert.equal(safeSendCut(text, 4), 4, '窗口内的断点应使用')
 })
 
 console.log(`\n========== 单元测试结果：${passed} 通过，${failures.length} 失败 ==========`)

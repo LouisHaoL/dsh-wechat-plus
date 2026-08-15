@@ -65,17 +65,17 @@ DSH 插件装在 profile 里（默认 `~/.dsh/profiles/web/`）。
 
 ```powershell
 # 在 DSH 之外打开 PowerShell，执行：
-dsh plugin --profile web add "D:\白话AI柱子哥\dsh-plugins\dsh-wechat-bridge"
+dsh plugin --profile web add "<插件仓库路径>"
 ```
 
 > `dsh plugin` 是 DSH 自带的插件管理命令（本质是把参数转发给 pnpm 并同步 bundle 列表）。
 > 装完后**重启 DSH** 使 bundle 生效。
 
-### 方式 B：手动安装（不重启、热加载，本机已采用此方式）
+### 方式 B：手动安装（`link:` 链接，推荐开发迭代用）
 
 ```powershell
 cd "$env:USERPROFILE\.dsh\profiles\web"
-pnpm add "link:D:\白话AI柱子哥\dsh-plugins\dsh-wechat-bridge"
+pnpm add "link:<插件仓库路径>"
 ```
 
 > 用 `link:`（而不是 `file:`）安装：node_modules 里是符号链接，改完源码重启 DSH 即生效，无需重装。
@@ -127,8 +127,8 @@ npm install
         transport: stdio
         command: 'C:\Program Files\nodejs\node.exe'   # 换成你机器上 node.exe 的绝对路径
         args:
-          - 'D:\dsh-wechat-bridge\mcp\fetch-server\server.mjs'
-        cwd: 'D:\dsh-wechat-bridge\mcp\fetch-server'
+          - '<仓库路径>\mcp\fetch-server\server.mjs'
+        cwd: '<仓库路径>\mcp\fetch-server'
         toolCallTimeoutMs: 60000
         failOnStartupError: true
 ```
@@ -155,18 +155,19 @@ npm install
 
 ## 五、自动化测试
 
-插件自带两套测试（真实 DSH 服务树 + 真实 DeepSeek 模型 + 模拟微信客户端）：
+插件自带三套测试（单元测试可在任何环境/CI 运行；集成测试用真实 DSH 服务树 + 真实 DeepSeek 模型 + 模拟微信客户端）：
 
 ```powershell
-cd D:\白话AI柱子哥\dsh-plugins\dsh-wechat-bridge
+cd <插件仓库路径>
 npm install          # 首次
 npm run test         # 全量集成测试（默认 2 轮；--rounds=N 可调）
 npm run test:smoke   # iLink 官方接口冒烟测试（获取二维码，不登录）
+node test/unit.mjs   # 纯单元测试（CI 亦运行此套）
 ```
 
-集成测试覆盖 24 项断言：真实模型问答回传、`/status` `/help` `/new` 命令、纯链接拦截、
+集成测试覆盖 43 项断言：真实模型问答回传、流式分段防切词（按句读边界切割）、`/status` `/help` `/new` 命令、
 白名单、`/new` 竞态、多联系人会话隔离、消息排队顺序、`/stop` 中断、凭证过期自动重登、
-重启恢复（凭证持久化）、非流式整段发送、空闲回收、优雅关闭。
+重启恢复（凭证持久化）、非流式整段发送、图片接收、定时任务、正在输入提示、outbox 文件回传、空闲回收、优雅关闭。
 
 > 测试环境自动隔离在 `test/.home`（复制你的凭证与模型配置），不污染真实 DSH 数据。
 

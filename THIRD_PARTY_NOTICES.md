@@ -18,7 +18,7 @@
 - 许可证：MIT License
 - 说明：该项目是腾讯官方开源包 `@tencent-weixin/openclaw-weixin` 的独立 TypeScript
   实现，零运行时依赖、无状态。本插件仅以 npm 依赖方式使用其公开 API
-  （`WeChatClient`、`MessageType`、`MessageItemType`、`WeChatClient.extractText`），
+  （`WeChatClient`、`MessageType`、`MessageItemType`、`TypingStatus`），
   未修改其源码。
 
 MIT License 原文（适用于上述 qrcode 与 wechat-ilink-client 两个依赖，版权归各自项目的贡献者所有）：
@@ -40,6 +40,16 @@ MIT License 原文（适用于上述 qrcode 与 wechat-ilink-client 两个依赖
 > LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 > OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 > SOFTWARE.
+
+## 网页抓取 MCP 服务器（mcp/fetch-server）依赖
+
+配套的极简 fetch MCP 服务器（可选安装）依赖以下两个包，均为 MIT 许可，
+按各自项目的版权声明执行（MIT 原文同上）：
+
+- `@modelcontextprotocol/sdk`（Model Context Protocol 官方 TypeScript SDK）
+  来源：https://github.com/modelcontextprotocol/typescript-sdk
+- `zod`（schema 校验库）
+  来源：https://github.com/colinhacks/zod
 
 ## 腾讯微信 iLink / ClawBot 协议
 

@@ -1,4 +1,4 @@
-# 依赖与生成物
+# 依赖与构建产物
 node_modules/
 *.tsbuildinfo
 
@@ -8,13 +8,24 @@ test/.work/
 test/.instrumented/
 test/*.txt
 
-# 日志与状态
+# 本机运维与调试文件（含个人信息，不发布）
+POST_RESTART_CHECKLIST.md
+test/debug-*.mjs
+test/make-instrumented.mjs
+
+# 运行时状态与日志
 *.log
 bridge.lock
 state.json
 override.json
 chats.json
+jobs-state.json
 login.html
+*.bak
+
+# AI 工作目录产物
+wechat-attachments/
+wechat-outbox/
 
 # 系统文件
 Thumbs.db

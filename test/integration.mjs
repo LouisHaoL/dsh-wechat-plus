@@ -126,6 +126,10 @@ class FakeClient extends EventEmitter {
     return 'ok'
   }
   async downloadMedia(item) {
+    if (item?.type === 4) {
+      // FILE：返回测试文件内容（入站文件接收链路用）
+      return { data: Buffer.from('hello file content'), kind: 'file', fileName: item.file_item?.file_name ?? 'test.txt' }
+    }
     // 1x1 PNG（最小合法图片，供测试）
     return { data: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64'), kind: 'image' }
   }
@@ -202,7 +206,11 @@ const bridge = new WeChatBridge(ctx, {
   idleTimeoutMins: 0,
   maxReplyChars: 1500,
   loginCooldownSecs: 1,
-  singleton: false
+  singleton: false,
+  groups: true,
+  groupRequireMention: true,
+  wechatMarkdown: true,
+  pollWatchdogSecs: 0
 }, {
   info: (...p) => console.log('   [bridge]', ...p),
   warn: (...p) => console.log('   [bridge]', ...p),
@@ -348,10 +356,10 @@ console.log('== 阶段 11：连续消息排队（同一联系人）==')
 console.log('== 阶段 12：/stop 中止进行中的任务 ==')
 {
   const base = bridge.client.sent.length
-  // 用模型不会拒绝、且必然流式长输出的提示词（含句号的 120 遍，保证流式分段在回合中
-  // 持续发出——流式发送按句读边界切割，无断点的纯文本串会一直缓冲到回合结束），
-  // 从而确保 /stop 能命中"忙"分支。
-  bridge.client.emit('message', makeMsgFrom('u-a', '请把「稳定测试。」这句话（含句号）连续重复 120 遍，中间不要停顿'))
+  // 确定性长任务：让模型持续输出直到收到停止指令（避免"重复 N 遍"被模型提前结束，
+  // 导致 /stop 到达时任务已完成而命中不了"忙"分支——该抖动历史上多次出现）。
+  // 「稳定测试。」含句号，保证流式分段在回合中持续发出。
+  bridge.client.emit('message', makeMsgFrom('u-a', '请连续输出「稳定测试。」这句话，每行一个，直到收到停止指令为止，不要自行结束'))
   // 等任务确实开始产生输出（部分流式回传已发生）再 stop，保证命中"忙"分支
   await waitFor('任务开始产出', () => sentText(bridge, base).includes('稳定测试'), 180000)
   bridge.client.emit('message', makeMsgFrom('u-a', '/stop'))
@@ -655,6 +663,48 @@ console.log('== 阶段 25：文件回传（outbox 自动发送）==')
     const last = bridge.client.mediaSent[bridge.client.mediaSent.length - 1]
     if (!last.filePath.endsWith('test-report.txt')) throw new Error(`发送文件异常：${last.filePath}`)
     if (!existsSync(join(dir, 'sent', 'test-report.txt'))) throw new Error('文件未移入 sent/')
+  })
+}
+
+console.log('== 阶段 26：群聊（@机器人 触发）==')
+{
+  const before = bridge.client.sent.length
+  // 群内未 @ 的消息：不应产生任何回复
+  bridge.client.emit('message', makeMsg('群里闲聊一下', { group_id: 'g-test', from_user_id: 'u-a', to_user_id: 'g-test', context_token: 'ctx-g' }))
+  await sleep(2500)
+  await check('群内未 @ 的消息不回复', async () => {
+    if (bridge.client.sent.length !== before) throw new Error(`意外回复：${sentText(bridge, before)}`)
+  })
+  // @ 开头：应回复，且回传目标为群 ID
+  const mG = '群-OK'
+  bridge.client.emit('message', makeMsg(`@机器人 请只回复下面这行文字：${mG}`, { group_id: 'g-test', from_user_id: 'u-a', to_user_id: 'g-test', context_token: 'ctx-g2' }))
+  await check('群内 @机器人 的消息得到回复且回传给群', async () => {
+    await waitFor('收到群回复', () => tight(sentText(bridge, before)).includes(mG), 180000)
+    const last = bridge.client.sent[bridge.client.sent.length - 1]
+    if (last.to !== 'g-test') throw new Error(`回传目标异常：${last.to}`)
+    if (!bridge.chats.get('g:g-test')?.agent) throw new Error('群会话 Agent 未创建')
+  })
+}
+
+console.log('== 阶段 27：入站文件接收 ==')
+{
+  const before = bridge.client.sent.length
+  const mF = '文件-OK'
+  const fileItem = { type: 4, file_item: { file_name: '说明.txt', len: '19' } }
+  bridge.client.emit('message', makeMsg(`请只回复下面这行文字：${mF}`, {
+    from_user_id: 'u-a',
+    item_list: [{ type: 1, text_item: { text: `请只回复下面这行文字：${mF}` } }, fileItem],
+    context_token: 'ctx-f'
+  }))
+  await check('文件下载回执 + 落盘 + AI 回复', async () => {
+    await waitFor('收到文件回执', () => sentText(bridge, before).includes('📎 收到 1 个文件'), 30000)
+    await waitFor('收到 AI 回复', () => tight(sentText(bridge, before)).includes(mF), 180000)
+    const fs = await import('node:fs')
+    const dir = join(WORK_DIR, 'wechat-attachments')
+    const files = fs.readdirSync(dir).filter((f) => f.startsWith('wechat-file-'))
+    if (files.length === 0) throw new Error('文件未落盘')
+    const content = fs.readFileSync(join(dir, files[0]), 'utf8')
+    if (!content.includes('hello file content')) throw new Error('落盘内容异常')
   })
 }
 

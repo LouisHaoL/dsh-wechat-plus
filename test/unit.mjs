@@ -1,7 +1,7 @@
 // 纯单元测试：不依赖 DSH 服务树，可在 GitHub Actions CI 上运行。
-// 覆盖：流式消毒器、cron 解析器、流式发送安全断点（其余全链路见 test/integration.mjs）。
+// 覆盖：流式消毒器、cron 解析器、流式发送安全断点、微信排版渲染器（其余全链路见 test/integration.mjs）。
 import assert from 'node:assert/strict'
-import { createStreamSanitizer, parseCron, nextCronAfter, safeSendCut } from '../lib/pure.js'
+import { createStreamSanitizer, parseCron, nextCronAfter, safeSendCut, createWeChatMarkdownRenderer } from '../lib/pure.js'
 
 let passed = 0
 const failures = []
@@ -108,6 +108,42 @@ check('safeSendCut：只搜索末尾 window，前缀断点不计', () => {
   const text = '第一段。第二段' // 「第一段。」是 4 字符前的前缀断点
   assert.equal(safeSendCut(text, 3), -1, '窗口外的断点不应使用')
   assert.equal(safeSendCut(text, 4), 4, '窗口内的断点应使用')
+})
+
+check('排版：加粗/标题/引用/列表/链接转纯文本', () => {
+  const r = createWeChatMarkdownRenderer()
+  let out = r.feed('## 今天天气\n')
+  out += r.feed('> 点评：很好\n')
+  out += r.feed('**重点** 是 `代码` 见 [链接](https://x.com/a)\n')
+  out += r.feed('- 项目一\n')
+  out += r.flush()
+  assert.ok(out.includes('今天天气'), '标题应保留文字')
+  assert.ok(!out.includes('##'), '标题标记应去除')
+  assert.ok(!out.includes('>'), '引用标记应去除')
+  assert.ok(!out.includes('**'), '加粗标记应去除')
+  assert.ok(!out.includes('`'), '行内码标记应去除')
+  assert.ok(out.includes('链接（https://x.com/a）'), '链接应转为 文字（url）')
+  assert.ok(out.includes('• 项目一'), '列表应转为 • ')
+})
+
+check('排版：两列表格转「a：b」，分隔行剔除', () => {
+  const r = createWeChatMarkdownRenderer()
+  let out = r.feed('| 项目 | 数据 |\n')
+  out += r.feed('|---|---|\n')
+  out += r.feed('| 温度 | 27°C |\n')
+  out += r.flush()
+  assert.ok(out.includes('温度：27°C'), `表格转换失败：${JSON.stringify(out)}`)
+  assert.ok(!out.includes('|'), `残留竖线：${JSON.stringify(out)}`)
+})
+
+check('排版：流式分片 + 代码块原样透传', () => {
+  const r = createWeChatMarkdownRenderer()
+  let out = r.feed('前文 **加粗开始')
+  out += r.feed('结束** 后文\n')
+  out += r.feed('```\ncode **raw**\n```\n')
+  out += r.flush()
+  assert.ok(out.includes('加粗开始结束'), '跨片加粗应还原')
+  assert.ok(out.includes('code **raw**'), '代码块应原样透传')
 })
 
 console.log(`\n========== 单元测试结果：${passed} 通过，${failures.length} 失败 ==========`)

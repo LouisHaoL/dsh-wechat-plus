@@ -12,7 +12,7 @@
 // 运行：node test/integration.mjs   （DSH_HOME 自动隔离到 test/.home）
 
 import { pathToFileURL, fileURLToPath } from 'node:url'
-import { dirname, join } from 'node:path'
+import { dirname, join, basename } from 'node:path'
 import { mkdirSync, writeFileSync, copyFileSync, readFileSync, existsSync, unlinkSync } from 'node:fs'
 import { EventEmitter } from 'node:events'
 
@@ -427,7 +427,7 @@ console.log('== 阶段 16：fiber 卸载时资源清理（ctx.effect 生命周�
   for (const c of FakeClient.instances) c.preExisting = true
   const testConfig = { ...bridge.config, token: '', accountId: '' }
   // 走真实插件入口 apply()，挂到独立 fiber（inject 与生产一致）
-  const fiber = ctx.plugin({ inject: ['timer', 'agents', 'sessions'], apply: (c) => apply(c, testConfig) })
+  const fiber = ctx.plugin({ inject: ['timer', 'agents', 'sessions', 'tools'], apply: (c) => apply(c, testConfig) })
   await fiber // 等待 fiber 加载完成
   await waitFor('新实例进入运行态', () => [...FakeClient.instances].some((c) => !c.preExisting && c.started), 15000)
   const scoped = [...FakeClient.instances].filter((c) => !c.preExisting && c.started && !c.stopped)
@@ -705,6 +705,28 @@ console.log('== 阶段 27：入站文件接收 ==')
     if (files.length === 0) throw new Error('文件未落盘')
     const content = fs.readFileSync(join(dir, files[0]), 'utf8')
     if (!content.includes('hello file content')) throw new Error('落盘内容异常')
+  })
+}
+
+console.log('== 阶段 28：专属文件交付工具（wechat_send_file 底层链路）==')
+{
+  const chatA = bridge.chats.get('u:u-a')
+  if (!chatA) throw new Error('u-a 会话不存在')
+  const beforeMedia = bridge.client.mediaSent?.length ?? 0
+  const done = await bridge.deliverFile(chatA, 'report.html', '<html>测试报告</html>')
+  await check('wechat_send_file 写入 outbox 并自动发送', async () => {
+    const sentDir = join(dirname(done.file), 'sent')
+    const still = existsSync(done.file)
+    const moved = existsSync(join(sentDir, basename(done.file)))
+    if (!still && !moved) throw new Error('文件既不在 outbox 也不在 sent')
+    await waitFor('文件自动发送', () => (bridge.client.mediaSent?.length ?? 0) > beforeMedia, 15000)
+    const last = bridge.client.mediaSent[bridge.client.mediaSent.length - 1]
+    if (!last.filePath.includes('report.html')) throw new Error(`发送文件异常：${last.filePath}`)
+  })
+  await check('wechat_send_local_file 拒绝工作目录外文件', async () => {
+    let rejected = false
+    try { await bridge.deliverLocalFile(chatA, 'C:/Windows/win.ini') } catch { rejected = true }
+    if (!rejected) throw new Error('未拒绝工作目录外文件')
   })
 }
 

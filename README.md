@@ -2,6 +2,8 @@
 
 把**手机微信**接到 **DeepSeek Harness (DSH)**：你在微信里给机器人发消息，DSH 的 AI 助手处理后把回复流式发回微信。功能定位与 CC-Connect 的"微信消息中转"类似，但**本插件为完全独立的原创实现**，与 CC-Connect 无任何代码、配置或商标关联（详见下方合规说明）。
 
+**English** — A [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) plugin that connects your phone's WeChat to a DSH AI agent through Tencent's official iLink / ClawBot protocol: streaming replies, QR-code login, per-contact sessions with persistence, cron jobs, and an optional self-hosted web-fetch MCP server. MIT licensed, fully original implementation.
+
 ```
 手机微信 ──▶ 腾讯 iLink Bot API（ilinkai.weixin.qq.com，官方开放协议）
                 │  长轮询收消息 / sendmessage 回传

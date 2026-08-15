@@ -1,7 +1,30 @@
 {
     "name":  "dsh-wechat-bridge",
     "version":  "0.4.0",
-    "description":  "DSH 插件：把手机微信（iLink ClawBot 协议）桥接到 DeepSeek Harness AI 助手，纯消息中转。",
+    "description":  "DSH 插件：把手机微信（腾讯 iLink/ClawBot 官方协议）桥接到 DeepSeek Harness AI 助手 | DeepSeek Harness WeChat bridge plugin: connect WeChat to DSH AI via Tencent iLink/ClawBot — streaming replies, QR login, cron jobs, web fetch (MCP)",
+    "keywords":  [
+                     "dsh",
+                     "deepseek-harness",
+                     "deepseek",
+                     "wechat",
+                     "weixin",
+                     "wechat-bot",
+                     "clawbot",
+                     "ilink",
+                     "tencent",
+                     "plugin",
+                     "chatbot",
+                     "ai-assistant",
+                     "mcp",
+                     "cordis",
+                     "streaming",
+                     "cron"
+                 ],
+    "repository":  {
+                       "type":  "git",
+                       "url":  "git+https://github.com/zxz9988/dsh-wechat-bridge.git"
+                   },
+    "homepage":  "https://github.com/zxz9988/dsh-wechat-bridge",
     "type":  "module",
     "main":  "lib/index.js",
     "exports":  {

@@ -2,6 +2,24 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。所有日期为本地日期。
 
+## [0.4.0] - 2026-08-15
+
+### 新增
+- **纯函数模块 `lib/pure.js`**：流式消毒器、cron 解析器、流式发送安全断点（`safeSendCut`）抽为**零依赖**模块；单元测试改从 pure.js 导入，在任意环境（含 GitHub Actions CI）**零安装**即可运行，永久规避 npm registry 上 `@deepseek-ai/*` 各 rc 包之间的 peer 版本冲突（`dsh-home-paths@rc.3` 与其余 rc.6 包对 `dsh-invariants` 的要求不兼容）。
+- **CI 双任务**：`unit`（checkout 后直接语法检查 + 单元测试，无 install 步骤）+ `install-smoke`（`--legacy-peer-deps --ignore-scripts` 验证直接依赖在全新环境可安装）。宿主 peer 由 DSH 运行时提供。
+
+### 修复
+- **fetch MCP：ANSI 颜色码剥离**：wttr.in 等接口会返回带终端颜色转义的文本，直接回传微信会出现乱码，现统一剥离。
+- **fetch MCP：网络错误附带原因码**：黑盒的 `fetch failed` 改为 `network fetch failed (UND_ERR_CONNECT_TIMEOUT) for <host>` 等带诊断信息，模型可向用户准确解释失败原因（超时/DNS/连接重置）。
+- **/stop 集成测试适配**：原提示词（无标点重复 60 遍）在句读边界流式分段下整段缓冲到回合结束，/stop 必然落空；改为含句号重复 120 遍。
+
+### 变更（开源前审查）
+- **敏感信息清除**：`POST_RESTART_CHECKLIST.md` 曾含真实机器人账号与个人微信 ID，已从工作区与**全部 git 历史**（filter-branch + gc）中清除，本地副本同步脱敏并加入 .gitignore。
+- **调试文件出库**：`test/debug-*.mjs`、`test/make-instrumented.mjs` 不再跟踪。
+- **README**：本机路径泛化、测试断言数修正（24→43）、wechat-ilink-client API 清单修正（新增 TypingStatus、移除 extractText）。
+- **THIRD_PARTY_NOTICES**：补全 MCP fetch 服务器依赖（`@modelcontextprotocol/sdk`、`zod`，均 MIT）。
+- **.gitignore**：覆盖运行时状态（`jobs-state.json`、`*.bak`）与 AI 工作目录产物（`wechat-attachments/`、`wechat-outbox/`）。
+
 ## [0.3.0] - 2026-08-15
 
 ### 新增

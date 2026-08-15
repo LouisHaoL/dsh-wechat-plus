@@ -1,7 +1,7 @@
 // 纯单元测试：不依赖 DSH 服务树，可在 GitHub Actions CI 上运行。
-// 覆盖：流式消毒器、cron 解析器（其余全链路见 test/integration.mjs）。
+// 覆盖：流式消毒器、cron 解析器、流式发送安全断点（其余全链路见 test/integration.mjs）。
 import assert from 'node:assert/strict'
-import { createStreamSanitizer, parseCron, nextCronAfter, safeSendCut } from '../lib/index.js'
+import { createStreamSanitizer, parseCron, nextCronAfter, safeSendCut } from '../lib/pure.js'
 
 let passed = 0
 const failures = []

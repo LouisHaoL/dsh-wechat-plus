@@ -5,6 +5,7 @@
 ## [0.5.0] - 2026-08-15
 
 ### 新增
+- **文件/图片上传修复（关键）**：iLink 服务端已把 `getUploadUrl` 响应从旧字段 `upload_param` 切换到新字段 `upload_full_url`，而 `wechat-ilink-client@0.1.0`（npm 无新版）只认旧字段，导致 outbox 文件回传全线失败（"getUploadUrl returned no upload_param"）。现自实现上传段：兼容新旧两种响应、AES-128-ECB 加密、POST 到预签名地址、下载参数取 CDN 响应头 `x-encrypted-param`（官方 openclaw-weixin@2.4.6 同款流程）；图片与文件统一走此路径。另加连续失败上限（5 次后移入 `failed/` 停止重试，避免每 2 秒重试刷屏）。
 - **用量尾注**：每轮 AI 回复末尾自动附 `⚙ 模型 · out 输出 · in 输入 · ctx 上下文`（tokenMeter 服务重放会话计算，provider 用量锚点缺失时仅显示 ctx；异常不影响回复）。配置 `usageFooter`（默认开）。
 - **专属文件交付工具**：注册 `wechat_send_file`（直接写内容交付文件）与 `wechat_send_local_file`（发送工作目录内已有文件）两个全局工具——不依赖 Agent 预设组合，微信侧智能体必然可见。实测发现模型在生成 HTML 报告时只把代码贴到聊天里，并声称"手上只有网页抓取一个工具"；现将文件交付变成确定性能力：工具写入联系人的 outbox 目录后由扫描器自动发送，并把工具用法注入 Agent 作用域提示。`wechat_send_local_file` 有工作目录安全边界（拒绝外发工作区外文件）。修复：工具定义补充 `output` 声明（注册曾被 ToolRuntime 以 "must declare output" 拒绝）。
 - **微信排版优化**：新增流式安全的 markdown-lite 渲染器（`createWeChatMarkdownRenderer`，纯函数）：`**加粗**`/行内码/删除线/`[链接](url)` 转纯文本、`| 表格 |` 两列转「a：b」多列对齐、`> 引用`/`# 标题` 去标记、`- 列表` 转 `• `、```代码块原样透传；逐行处理、跨片状态保留（与流式消毒器同构）。配置 `wechatMarkdown`（默认开）。非流式长回复自动加 `(1/n)` 分段编号。

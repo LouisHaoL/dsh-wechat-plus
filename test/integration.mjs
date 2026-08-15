@@ -125,6 +125,26 @@ class FakeClient extends EventEmitter {
     this.mediaSent.push({ to, filePath, contextToken })
     return 'ok'
   }
+  async sendUploadedFile(to, fileName, uploaded, caption, contextToken) {
+    this.mediaSent = this.mediaSent ?? []
+    this.mediaSent.push({ to, filePath: fileName, contextToken })
+    return 'ok'
+  }
+  async sendUploadedImage(to, uploaded, caption, contextToken) {
+    this.mediaSent = this.mediaSent ?? []
+    this.mediaSent.push({ to, filePath: '(image)', contextToken })
+    return 'ok'
+  }
+  async uploadCdn(cdnUrl, ciphertext) {
+    // 测试注入口：模拟 CDN 上传成功，返回下载参数
+    return { downloadParam: 'fake-encrypted-param' }
+  }
+  api = {
+    cdnBaseUrl: 'https://example.invalid',
+    async getUploadUrl() {
+      return { upload_param: 'fake-upload-param' }
+    }
+  }
   async downloadMedia(item) {
     if (item?.type === 4) {
       // FILE：返回测试文件内容（入站文件接收链路用）

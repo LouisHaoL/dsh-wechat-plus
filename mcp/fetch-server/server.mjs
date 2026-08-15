@@ -109,11 +109,21 @@ async function fetchUrl(url, format, maxChars, startIndex) {
     throw new Error("private/internal network addresses are not allowed");
   }
 
-  const res = await fetch(parsed.href, {
-    redirect: "follow",
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-    headers: { "user-agent": "wechat-bridge-fetch/1.0", accept: "text/html,application/json,text/plain;q=0.9,*/*;q=0.5" },
-  });
+  let res
+  try {
+    res = await fetch(parsed.href, {
+      redirect: "follow",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      headers: { "user-agent": "wechat-bridge-fetch/1.0", accept: "text/html,application/json,text/plain;q=0.9,*/*;q=0.5" },
+    })
+  } catch (error) {
+    // 把黑盒的 "fetch failed" 换成带原因的诊断信息（超时/连接重置/DNS 失败等）
+    let reason = error?.cause?.code ?? ''
+    if (error?.name === 'TimeoutError' || error?.name === 'AbortError') reason = 'timeout'
+    if (error?.cause?.code === 'ENOTFOUND' || error?.cause?.code === 'EAI_AGAIN') reason = 'DNS lookup failed'
+    const detail = reason ? ` (${reason})` : ''
+    throw new Error(`network fetch failed${detail} for ${parsed.hostname}`)
+  }
   const contentType = (res.headers.get("content-type") || "").toLowerCase();
   let text = await readBody(res); // read the body exactly once
   let outFormat = format;

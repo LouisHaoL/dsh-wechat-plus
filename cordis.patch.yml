@@ -1,6 +1,7 @@
 # dsh-wechat-bridge bundle patch — 挂载微信桥接插件。
 # 本文件由 `dsh plugin` 随 bundle 自动应用；如需覆盖配置，
 # 请在 profile 的 cordis.patch.yml 中按 id 覆写（每个 id 最后一次写入生效）。
+# 注意：name 必须是 npm 包全名（scoped），加载器按 node_modules 目录名解析。
 - insert:
     - id: wechat-bridge
-      name: dsh-wechat-bridge
+      name: '@zxz9988/dsh-wechat-bridge'

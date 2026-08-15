@@ -91,8 +91,20 @@ pnpm add "link:<插件仓库路径>"
 ```yaml
 - insert:
     - id: wechat-bridge
-      name: dsh-wechat-bridge
+      name: '@zxz9988/dsh-wechat-bridge'
 ```
+
+### 方式 C：npm 发布版（普通用户推荐）
+
+```powershell
+dsh plugin --profile web add @zxz9988/dsh-wechat-bridge
+# 或手动：
+cd "$env:USERPROFILE\.dsh\profiles\web"
+pnpm add @zxz9988/dsh-wechat-bridge
+```
+
+> npm 上另有他人发布的同名非 scoped 包（`dsh-wechat-bridge`，作者 gtaifu），与本项目无关；
+> 本项目的官方包名是 **`@zxz9988/dsh-wechat-bridge`**，请勿混淆。
 
 ### 首次启用（扫码）
 
@@ -104,7 +116,7 @@ pnpm add "link:<插件仓库路径>"
 ```yaml
 - insert:
     - id: wechat-bridge
-      name: dsh-wechat-bridge
+      name: '@zxz9988/dsh-wechat-bridge'
       config:
         enabled: false
 ```

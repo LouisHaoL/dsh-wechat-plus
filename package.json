@@ -1,6 +1,6 @@
 {
     "name":  "@zxz9988/dsh-wechat-bridge",
-    "version":  "0.5.0",
+    "version":  "0.5.1",
     "description":  "DSH 插件：把手机微信（腾讯 iLink/ClawBot 官方协议）桥接到 DeepSeek Harness AI 助手 | DeepSeek Harness WeChat bridge plugin: connect WeChat to DSH AI via Tencent iLink/ClawBot — streaming replies, QR login, cron jobs, web fetch (MCP)",
     "keywords":  [
                      "dsh",

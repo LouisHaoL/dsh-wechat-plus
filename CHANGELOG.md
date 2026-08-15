@@ -2,6 +2,11 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。所有日期为本地日期。
 
+## [0.5.1] - 2026-08-15
+
+### 修复（发布事故）
+- **0.5.0 包损坏重发**：发布 0.5.0 时 Windows Defender 将 `lib/index.js` 误判为木马（Trojan:Script/ObfusScript.A!ml）并隔离删除，恰逢打包窗口，导致 npm 上的 0.5.0 包**缺少插件主入口文件**、安装后无法加载。已恢复文件、将 `D:\dsh-wechat-bridge` 与 `C:\Users\Administrator\mcp-servers` 加入 Defender 排除目录，并发布 0.5.1 修复版（内容与 0.5.0 一致）。如已安装 0.5.0，请升级到 0.5.1。
+
 ## [0.5.0] - 2026-08-15
 
 ### 新增

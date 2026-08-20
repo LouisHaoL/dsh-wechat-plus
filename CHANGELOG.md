@@ -24,6 +24,16 @@
 - **routeMode 三档**：`auto`（默认自动切）/ `ask`（切入前三选一确认）/ `off`（纯手动）。
 - **隐私**：openviking provider 会把锚点文本写入本机 OpenViking（`wechat-plus-route/` 前缀），仅本机存储，README 已作隐私告知。
 
+### 新增（M5：模型切换）
+- **`/models`**：列出可用模型（按 provider 分组，当前模型 ★ 标记），编号菜单（复用单活跃 + TTL 机制）。
+- **`/model <n或名称>`**：数字走菜单 / 模型 id 精确优先、唯一子串匹配（多匹配列候选）/ 无参显示当前模型。
+- **按联系人持久化**：模型偏好存 `bindings.json` 的 `model` 字段，重启保留；create/resume 两路径均生效。空闲时切换立即生效（resume 同会话保留上下文）；busy 不杀任务，本轮完成后生效。`llm` 服务缺失或单 provider 列举失败均优雅降级。
+
+### 测试（M3）
+- **E2E**（`test/smoke-e2e.mjs`）：SPEC 场景 1~8 全链路断言——真实 `searchSessions` 游标分页 mock、路由 fetchImpl mock、绑定持久化与重启恢复、`/history` 脱敏与分段截断。
+- **单元补充**（`test/unit-session.mjs`，21 项）：脱敏各形态、菜单 TTL/单活跃/越界、绑定持久化往返、路由阈值/迟滞/静默窗口边界值。
+- **修复测试暴露的缺陷**：会话菜单裸 `n` 翻页、脱敏正则误伤中文正文、`/history` 截断逐段发送语义、轮数上限放宽至 100、路由歧义比较浮点容差、bindings 惰性加载。
+
 ### 文档（M4）
 - README 重写为单文件中英双语（中文在前），含命令表、路由说明与配置示例、安全注意事项；CHANGELOG 补本条目。
 

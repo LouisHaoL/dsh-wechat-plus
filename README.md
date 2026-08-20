@@ -33,7 +33,7 @@
 ## 三、功能
 
 - ✅ 手机微信私聊 → DSH AI 对话，回复**流式分段**发回（打字机效果，按句读边界切割不切词）
-- ✅ **多项目/会话管理**：`/projects` `/project` `/sessions` `/home` `/new` `/stay` `/status` `/history`（详见下节）
+- ✅ **多项目/会话管理**：`/projects` `/project` `/sessions` `/home` `/new` `/stay` `/status` `/history` `/models` `/model` 全套命令，微信端直接切换项目与历史会话、切换模型（详见下节）
 - ✅ **embedding 智能路由**：日常闲聊自动分流，项目相关消息自动切入对应项目（详见「智能路由」）
 - ✅ 内置**扫码登录**：自动弹出二维码页面，微信扫码即完成绑定（也可直接配置已有 token）
 - ✅ 每个联系人**独立绑定状态**（当前项目 + 会话指针），持久化、重启恢复
@@ -64,8 +64,10 @@
 | `/home` | 回到**日常模式** |
 | `/new` | 当前项目另开新会话（旧会话保留，可从 `/sessions` 找回） |
 | `/stay [小时]` | 钉住当前上下文（默认 2 小时），期间智能路由静默；无参数 = 查询剩余时间 |
-| `/status` | 显示当前项目 / 会话 / stay 状态 |
-| `/history [n]` | 把当前会话最近 n 轮对话（默认 5）发到微信（自动脱敏） |
+| `/status` | 显示当前项目 / 会话 / stay 状态 / 当前模型 |
+| `/history [n]` | 把当前会话最近 n 轮对话（默认 5）发到微信（自动脱敏，超长按 20 段截断） |
+| `/models` | 列出可用模型（按 provider 分组，当前模型 ★ 标记），编号菜单 |
+| `/model <n或名称>` | 切换当前联系人的模型：数字选菜单 / 模型 id（支持唯一子串匹配，多匹配会列出候选）/ 无参数显示当前模型。按联系人持久化（重启保留）；空闲时立即生效且保留会话上下文，任务运行中则本轮完成后生效 |
 | `/help` | 帮助文本 |
 | `/stop` | 中断当前正在处理的任务 |
 
@@ -363,8 +365,10 @@ Each contact's messages have an explicit **ownership pointer**: current project 
 | `/home` | Return to **Daily mode** |
 | `/new` | Start a new session in the current project (old session kept, findable via `/sessions`) |
 | `/stay [hours]` | Pin the current context (default 2h); smart routing stays silent; no arg = query remaining time |
-| `/status` | Show current project / session / stay state |
-| `/history [n]` | Send the last n turns (default 5) of the current session to WeChat (auto-redacted) |
+| `/status` | Show current project / session / stay state / current model |
+| `/history [n]` | Send the last n turns (default 5) of the current session to WeChat (auto-redacted; capped at 20 segments) |
+| `/models` | List available models grouped by provider (current model ★), numbered menu |
+| `/model <n or name>` | Switch model for the current contact: number picks from menu / model id (unique-substring match; ambiguous matches list candidates) / no arg shows current. Persisted per contact (survives restarts); takes effect immediately when idle (session context kept), or after the running turn when busy |
 | `/help` | Help text |
 | `/stop` | Interrupt the running task |
 

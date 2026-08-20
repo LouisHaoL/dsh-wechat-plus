@@ -1,4 +1,4 @@
-// dsh-wechat-bridge 集成测试
+// dsh-wechat-plus 集成测试
 //
 // 用真实 DSH 服务树（dsh-base bundle + 真实 DeepSeek 模型）驱动 WeChatBridge，
 // 以模拟微信客户端（FakeClient）代替真实 iLink 传输层，覆盖：
@@ -30,8 +30,8 @@ mkdirSync(PROFILE_DIR, { recursive: true })
 mkdirSync(WORK_DIR, { recursive: true })
 // 每次运行从干净状态开始（清除上次运行的插件侧状态：会话索引/任务状态/覆盖配置/锁/日志）
 {
-  const stateDir = join(TEST_HOME, 'wechat-bridge')
-  for (const f of ['chats.json', 'jobs-state.json', 'override.json', 'bridge.lock', 'state.json', 'bridge.log']) {
+  const stateDir = join(TEST_HOME, 'wechat-plus')
+  for (const f of ['chats.json', 'jobs-state.json', 'override.json', 'bridge.lock', 'state.json', 'bridge.log', 'bindings.json']) {
     const p = join(stateDir, f)
     if (existsSync(p)) unlinkSync(p)
   }
@@ -262,8 +262,8 @@ for (let round = 1; round <= ROUNDS; round++) {
     const chat = bridge.chats.get('u:u-fake')
     if (!chat?.agent) throw new Error('Agent 未创建')
   })
-  await check('回复末尾附带用量统计（严格 GUI 格式 + ~/.dsh-wechat-bridge）', async () => {
-    await waitFor('收到用量尾注', () => /[\w.-]+ · out [\d.k]+ · in [\d.k]+ cw \d+(\.\d+k)? cr [\d.k]+ · ctx \d+% ~\/\.dsh-wechat-bridge/.test(sentText(bridge, roundBase)), 30000)
+  await check('回复末尾附带用量统计（严格 GUI 格式 + ~/.dsh-wechat-plus）', async () => {
+    await waitFor('收到用量尾注', () => /[\w.-]+ · out [\d.k]+ · in [\d.k]+ cw \d+(\.\d+k)? cr [\d.k]+ · ctx \d+% ~\/\.dsh-wechat-plus/.test(sentText(bridge, roundBase)), 30000)
   })
 
   console.log('== 阶段 4：命令 ==')
@@ -331,7 +331,7 @@ for (let round = 1; round <= ROUNDS; round++) {
       if (bridge.chats.size !== 0) throw new Error(`仍有 ${bridge.chats.size} 个会话`)
     })
     await check('空闲回收后索引保留 contextToken（定时推送需要）', async () => {
-      const indexFile = join(TEST_HOME, 'wechat-bridge', 'chats.json')
+      const indexFile = join(TEST_HOME, 'wechat-plus', 'chats.json')
       if (!existsSync(indexFile)) throw new Error('chats.json 不存在')
       const idx = JSON.parse(readFileSync(indexFile, 'utf8'))
       const entry = idx['u:u-fake']
@@ -419,7 +419,7 @@ console.log('== 阶段 13：凭证过期自动重登 ==')
 console.log('== 阶段 14：重启恢复（凭证持久化）==')
 {
   // 把当前凭证落盘，模拟重启后重新构造桥接
-  writeFileSync(join(TEST_HOME, 'wechat-bridge', 'state.json'), JSON.stringify({ version: 1, credentials: bridge.state.credentials, syncBuf: '', lastLoginAt: Date.now() }, null, 2))
+  writeFileSync(join(TEST_HOME, 'wechat-plus', 'state.json'), JSON.stringify({ version: 1, credentials: bridge.state.credentials, syncBuf: '', lastLoginAt: Date.now() }, null, 2))
   const bridge2 = new WeChatBridge(ctx, {
     enabled: true, token: '', accountId: '', baseUrl: 'https://example.invalid',
     allowFrom: ['*'], workDir: WORK_DIR, blockLinks: true, streaming: true,
@@ -458,7 +458,7 @@ console.log('== 阶段 16：fiber 卸载时资源清理（ctx.effect 生命周�
   const scoped = [...FakeClient.instances].filter((c) => !c.preExisting && c.started && !c.stopped)
   if (scoped.length === 0) throw new Error('未发现由 apply 创建的运行中客户端')
   await check('专属文件工具注册成功（无 output 声明错误）', async () => {
-    const logFile = join(TEST_HOME, 'wechat-bridge', 'bridge.log')
+    const logFile = join(TEST_HOME, 'wechat-plus', 'bridge.log')
     if (!existsSync(logFile)) throw new Error('测试桥接日志不存在')
     const content = readFileSync(logFile, 'utf8')
     const idx = content.lastIndexOf('已注册微信专属工具')
@@ -538,7 +538,7 @@ console.log('== 阶段 18：单例互斥（第二个实例自动停用）==')
 
 console.log('== 阶段 19：override.json 白名单分级 + 管理员鉴权（含热加载）==')
 {
-  const ovFile = join(TEST_HOME, 'wechat-bridge', 'override.json')
+  const ovFile = join(TEST_HOME, 'wechat-plus', 'override.json')
   writeFileSync(ovFile, JSON.stringify({ allowFrom: ['u-admin'], admins: ['u-admin'] }, null, 2))
   const bridgeO = new WeChatBridge(ctx, { ...bridge.config, singleton: false }, { info: () => {}, warn: () => {}, error: () => {} }, FakeClient)
   await bridgeO.start()
@@ -593,7 +593,7 @@ console.log('== 阶段 20：会话持久化（重启后恢复上下文）==')
   const chatP1 = bridgeP1.chats.get('u:u-x')
   const sessionP1 = chatP1?.sessionId
   if (!sessionP1) throw new Error('P1 未创建会话')
-  const indexFile = join(TEST_HOME, 'wechat-bridge', 'chats.json')
+  const indexFile = join(TEST_HOME, 'wechat-plus', 'chats.json')
   await check('会话索引已落盘且保留 contextToken', async () => {
     if (!existsSync(indexFile)) throw new Error('chats.json 不存在')
     const idx = JSON.parse(readFileSync(indexFile, 'utf8'))
@@ -654,7 +654,7 @@ await check('cron 解析与下一次触发时刻计算', async () => {
   if (next2.getTime() <= Date.now()) throw new Error('每分钟 cron 的下一时刻应在未来')
 })
 {
-  const ovFile = join(TEST_HOME, 'wechat-bridge', 'override.json')
+  const ovFile = join(TEST_HOME, 'wechat-plus', 'override.json')
   const before = bridge.client.sent.length
   writeFileSync(ovFile, JSON.stringify({
     jobs: [

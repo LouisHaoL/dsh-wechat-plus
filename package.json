@@ -1,7 +1,7 @@
 {
-    "name":  "@zxz9988/dsh-wechat-bridge",
-    "version":  "0.5.1",
-    "description":  "DSH 插件：把手机微信（腾讯 iLink/ClawBot 官方协议）桥接到 DeepSeek Harness AI 助手 | DeepSeek Harness WeChat bridge plugin: connect WeChat to DSH AI via Tencent iLink/ClawBot — streaming replies, QR login, cron jobs, web fetch (MCP)",
+    "name":  "dsh-wechat-plus",
+    "version":  "0.6.0",
+    "description":  "DSH 插件：把手机微信（腾讯 iLink/ClawBot 官方协议）桥接到 DeepSeek Harness AI 助手，支持微信端项目/会话管理与智能路由 | WeChat bridge for DeepSeek Harness with session management & smart routing",
     "keywords":  [
                      "dsh",
                      "deepseek-harness",
@@ -22,9 +22,9 @@
                  ],
     "repository":  {
                        "type":  "git",
-                       "url":  "git+https://github.com/zxz9988/dsh-wechat-bridge.git"
+                       "url":  "git+https://github.com/LouisHaoL/dsh-wechat-plus.git"
                    },
-    "homepage":  "https://github.com/zxz9988/dsh-wechat-bridge",
+    "homepage":  "https://github.com/LouisHaoL/dsh-wechat-plus",
     "type":  "module",
     "main":  "lib/index.js",
     "exports":  {

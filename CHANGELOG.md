@@ -2,6 +2,31 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。所有日期为本地日期。
 
+## [0.6.0] - 2026-08-16
+
+本项目自此更名为 **dsh-wechat-plus**（包名 `dsh-wechat-plus`、插件名 `wechat-plus`、状态目录 `~/.dsh/wechat-plus/`；旧目录 `~/.dsh/wechat-bridge/` 首次启动自动整体迁移，token/索引/绑定全保留）。
+
+### 新增（M1：项目/会话管理）
+- **联系人绑定状态**：每联系人独立持久化 `{ 当前项目, 会话指针, stayUntil }` 到 `~/.dsh/wechat-plus/bindings.json`，重启恢复；每个项目各记自己的会话指针（切走再切回仍在原会话）。
+- **命令集扩充**：`/projects`（列项目，"日常"置顶编号菜单）、`/project <n>`（切项目并落在最近活跃会话）、`/sessions [页码或关键词]`（列当前项目会话，每页 ≤8 条，`n`=下一页，关键词按标题过滤；回复数字选中）、`/home`（回日常）、`/stay [小时]`（钉住上下文默认 2h，路由静默）、`/history [n]`（当前会话最近 n 轮发微信，默认 5）。全部斜杠命令零 LLM 调用、投递前拦截。
+- **`/new` 语义升级**：当前项目另开新会话，旧会话保留可从 `/sessions` 找回；`/status` 扩展显示项目/会话/stay 状态。
+- **日常模式**：伪项目 `__daily__`（cwd `~/.dsh/daily/`），一个长生命周期会话，上下文连续；新联系人默认落日常。
+- **阶层约束（铁律）**：`/sessions` 只列当前项目会话；切换自动落最近活跃会话；会话恢复强制用该会话自身 cwd，不跨项目 resume。
+- **编号菜单机制**：单活跃菜单（新菜单作废旧菜单）+ 5 分钟 TTL，失效后回复数字提示重新 `/sessions`。
+- **`/history` 脱敏**：API key / Bearer token / 密码赋值 / 长随机串 / 手机号正则替换为 `***`；分段复用 safeSendCut，单次上限 20 段。
+- **边界处理**：切换时 busy 会话仅提示不杀任务；`sessionQuery`/`workspaceRegistry` 不可用时命令降级提示"当前 DSH 版本不支持"。
+
+### 新增（M2：embedding 智能路由）
+- **路由时机与决策表**：消息投递 AI 之前路由；项目内闲聊不切出、跨项目工作意图只发一行切换建议（不打断）、日常模式高置信自动切入（带 `[已进入【项目】·《标题》]` 标头 + `↩ /home 回日常` 可撤销）、歧义（top1−top2 ≤ margin）发三选一菜单。
+- **阈值校准（实测修订 v1.1）**：默认 `routerEnter = 0.75`（本机 OpenViking 0.4.15 实测无关消息 ~0.70、相关 ~0.876，SPEC 初值 0.62 过于激进）、`routerMargin = 0.08`、项目间切换迟滞 +0.05、手动切换后 60 秒路由静默窗口。
+- **项目锚点**：AGENTS.md/README.md 前 2000 字 + 最近 6 轮对话摘要，缓存 `~/.dsh/wechat-plus/anchors.json`（TTL 1 小时）；日常无锚点。
+- **可插拔相似度服务**：`routerProvider` 支持 `openviking`（本机 OpenViking 语义搜索，推荐、免 key）与 `deepseek`（OpenAI 兼容 /embeddings + 本地余弦）与 `off`；provider 不可达/失败一律降级直通，永不阻塞消息。
+- **routeMode 三档**：`auto`（默认自动切）/ `ask`（切入前三选一确认）/ `off`（纯手动）。
+- **隐私**：openviking provider 会把锚点文本写入本机 OpenViking（`wechat-plus-route/` 前缀），仅本机存储，README 已作隐私告知。
+
+### 文档（M4）
+- README 重写为单文件中英双语（中文在前），含命令表、路由说明与配置示例、安全注意事项；CHANGELOG 补本条目。
+
 ## [0.5.1] - 2026-08-15
 
 ### 修复（发布事故）

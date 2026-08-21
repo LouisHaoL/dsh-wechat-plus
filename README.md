@@ -1,5 +1,7 @@
 # dsh-wechat-plus · DSH 微信桥接插件（项目/会话管理 + 智能路由版）
 
+> ⚠️ **项目状态：已封存（2026-08-21）**。本插件**功能未完善**，存在已知缺陷（会话恢复竞态、启动多实例锁竞争等），**仅作为实现思路与方案参考保留**，不建议直接在生产环境安装使用。欢迎按本 README 记录的方案自行取用与续作。
+
 **[中文](#中文文档) | [English](#english-documentation)**
 
 ---
@@ -304,6 +306,8 @@ node test/unit.mjs   # 纯单元测试（CI 亦运行此套）
 <a name="english-documentation"></a>
 
 # dsh-wechat-plus · DSH WeChat Bridge Plugin (Project/Session Management + Smart Routing)
+
+> ⚠️ **Project status: archived (2026-08-21).** This plugin is **incomplete** with known defects (session-resume races, multi-instance lock contention on startup, etc.) and is kept **as a design reference / proof of concept only** — not recommended for production use. Feel free to build on the approach documented here.
 
 **[中文](#中文文档) | [English](#english-documentation)**
 
